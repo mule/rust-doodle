@@ -11,10 +11,20 @@ fn main() {
     let [r, g, b, a] = config.background_color;
 
     App::new()
-        .add_plugins(DefaultPlugins.set(AssetPlugin {
-            file_path: config::ASSETS_DIR.to_string(),
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(AssetPlugin {
+                    file_path: config::ASSETS_DIR.to_string(),
+                    ..default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Hello Bevy Advanced".to_string(),
+                        ..default()
+                    }),
+                    ..default()
+                }),
+        )
         .insert_resource(ClearColor(Color::srgba(r, g, b, a)))
         .insert_resource(config)
         .add_plugins(Material2dPlugin::<spotlight::SpotlightMaterial>::default())

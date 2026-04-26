@@ -4,6 +4,20 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug hello-bevy-advanced",
+            "cargo": {
+                "args": ["build", "--manifest-path", "cross-platform/hello-bevy-advanced/Cargo.toml"],
+                "filter": {
+                    "name": "hello-bevy-advanced",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}/cross-platform/hello-bevy-advanced"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug hello-bevy",
             "cargo": {
                 "args": ["build", "--manifest-path", "cross-platform/hello-bevy/Cargo.toml"],
