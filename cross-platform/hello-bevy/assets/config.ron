@@ -1,0 +1,5 @@
+AppConfig(
+    text: "\u{e7a8} These pretzels are making me thirsty!",
+    font_size: 40.0,
+    color: (1.0, 1.0, 1.0, 1.0),
+)
