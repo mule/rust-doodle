@@ -39,7 +39,7 @@ pub fn animate_color_wave(
 ) {
     let t = time.elapsed_secs();
     for (wave_index, mut color) in &mut query {
-        let hue = (t * config.wave_speed + wave_index.0 as f32 * config.wave_spread) % 1.0;
+        let hue = (t * config.wave_speed + wave_index.0 as f32 * config.wave_spread).rem_euclid(1.0);
         *color = TextColor(Color::hsl(hue * 360.0, 1.0, 0.6));
     }
 }

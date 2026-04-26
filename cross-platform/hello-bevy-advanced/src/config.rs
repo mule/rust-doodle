@@ -19,6 +19,7 @@ pub const ASSETS_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets");
 pub fn load_config() -> AppConfig {
     let config_path = format!("{}/config.ron", ASSETS_DIR);
     let config_str = std::fs::read_to_string(&config_path)
-        .expect("Failed to read assets/config.ron");
-    ron::from_str(&config_str).expect("Failed to parse assets/config.ron")
+        .unwrap_or_else(|err| panic!("Failed to read '{}': {}", config_path, err));
+    ron::from_str(&config_str)
+        .unwrap_or_else(|err| panic!("Failed to parse '{}': {}", config_path, err))
 }
