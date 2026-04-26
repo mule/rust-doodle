@@ -1,0 +1,7 @@
+{
+      "rust-analyzer.linkedProjects": [
+    "cross-platform\\hello-rust\\Cargo.toml",
+    "cross-platform\\hello-bevy\\Cargo.toml"
+  
+  ]
+}

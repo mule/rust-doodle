@@ -1,0 +1,33 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug hello-bevy",
+            "cargo": {
+                "args": ["build", "--manifest-path", "cross-platform/hello-bevy/Cargo.toml"],
+                "filter": {
+                    "name": "hello-bevy",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}/cross-platform/hello-bevy"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug hello-rust",
+            "cargo": {
+                "args": ["build", "--manifest-path", "cross-platform/hello-rust/Cargo.toml"],
+                "filter": {
+                    "name": "hello-rust",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}/cross-platform/hello-rust"
+        }
+    ]
+}
