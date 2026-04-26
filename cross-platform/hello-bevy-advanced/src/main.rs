@@ -1,7 +1,9 @@
 use bevy::prelude::*;
+use bevy::sprite_render::Material2dPlugin;
 
 mod config;
 mod particles;
+mod spotlight;
 mod text_wave;
 
 fn main() {
@@ -15,11 +17,14 @@ fn main() {
         }))
         .insert_resource(ClearColor(Color::srgba(r, g, b, a)))
         .insert_resource(config)
+        .add_plugins(Material2dPlugin::<spotlight::SpotlightMaterial>::default())
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, text_wave::spawn_text)
         .add_systems(Startup, particles::spawn_particles)
+        .add_systems(Startup, spotlight::spawn_spotlight)
         .add_systems(Update, text_wave::animate_color_wave)
         .add_systems(Update, particles::animate_particles)
+        .add_systems(Update, spotlight::track_mouse)
         .run();
 }
 
