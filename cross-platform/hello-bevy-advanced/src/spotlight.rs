@@ -2,7 +2,7 @@ use bevy::{
     prelude::*,
     render::render_resource::{AsBindGroup, ShaderType},
     shader::ShaderRef,
-    sprite_render::{AlphaMode2d, Material2d},
+    sprite_render::Material2d,
 };
 
 use crate::config::AppConfig;
@@ -24,10 +24,6 @@ pub struct SpotlightMaterial {
 impl Material2d for SpotlightMaterial {
     fn fragment_shader() -> ShaderRef {
         "shaders/spotlight.wgsl".into()
-    }
-
-    fn alpha_mode(&self) -> AlphaMode2d {
-        AlphaMode2d::Blend
     }
 }
 
@@ -56,12 +52,12 @@ pub fn spawn_spotlight(
 
     commands.insert_resource(SpotlightHandle(material.clone()));
 
-    // Fullscreen quad at z=15 (above text at z=10) — acts as a darkness overlay
-    // with a spotlight hole cut by the shader
+    // Fullscreen quad at z=2 (above background, below particles at z=5 and text at z=10)
+    // Acts as a glow layer on the dark background
     commands.spawn((
         Mesh2d(meshes.add(Rectangle::new(w, h))),
         MeshMaterial2d(material),
-        Transform::from_xyz(0.0, 0.0, 15.0),
+        Transform::from_xyz(0.0, 0.0, 2.0),
     ));
 }
 

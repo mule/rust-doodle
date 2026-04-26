@@ -22,9 +22,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     );
 
     let dist = distance(frag_pos, mouse_screen);
-    let falloff = smoothstep(0.0, uniforms.radius, dist);
-    // Dark vignette that fades to transparent at the spotlight center
-    let darkness = falloff * (1.0 - uniforms.intensity);
+    let falloff = 1.0 - smoothstep(0.0, uniforms.radius, dist);
+    let brightness = falloff * uniforms.intensity;
 
-    return vec4<f32>(0.0, 0.0, 0.0, darkness);
+    return vec4<f32>(brightness, brightness, brightness, 1.0);
 }
