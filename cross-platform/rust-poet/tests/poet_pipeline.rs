@@ -1,3 +1,5 @@
+#![cfg(feature = "test-utils")]
+
 use rust_poet::poet::{Poem, PoemSettings, Poet};
 use rust_poet::test_utils::MockLlmProvider;
 use rust_poet::topic::fixed::FixedTopic;
