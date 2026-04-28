@@ -1,6 +1,7 @@
 pub(crate) mod openai_like;
 pub mod openai;
 pub mod mistral;
+pub mod anthropic;
 
 use std::time::Duration;
 
