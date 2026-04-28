@@ -1,8 +1,11 @@
 //! Shared request/response shapes for OpenAI-compatible providers (OpenAI, Mistral, Ollama-OpenAI-mode, Groq, ...).
 
+use std::time::Duration;
+
+use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 
-use crate::provider::{Message, Role};
+use crate::provider::{LlmRequest, LlmResponse, Message, ProviderError, Role, Usage};
 
 #[derive(Debug, Serialize)]
 pub(crate) struct ChatRequest<'a> {
@@ -61,58 +64,6 @@ pub(crate) struct ErrorEnvelope {
 pub(crate) struct ErrorBody {
     pub message: String,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn serializes_request_with_required_fields() {
-        let req = ChatRequest {
-            model: "gpt-4o-mini",
-            messages: vec![
-                ChatMessage { role: "system", content: "be brief" },
-                ChatMessage { role: "user", content: "hi" },
-            ],
-            max_tokens: 128,
-            temperature: 0.7,
-        };
-        let json = serde_json::to_value(&req).unwrap();
-        assert_eq!(json["model"], "gpt-4o-mini");
-        assert_eq!(json["max_tokens"], 128);
-        let temp = json["temperature"].as_f64().unwrap();
-        assert!((temp - 0.7).abs() < 1e-6, "temperature {temp} not close to 0.7");
-        assert_eq!(json["messages"][0]["role"], "system");
-        assert_eq!(json["messages"][1]["content"], "hi");
-    }
-
-    #[test]
-    fn parses_response_choices() {
-        let body = r#"{
-            "model": "gpt-4o-mini-2024-07-18",
-            "choices": [
-                {"message": {"role": "assistant", "content": "hello there"}}
-            ],
-            "usage": {"prompt_tokens": 10, "completion_tokens": 4, "total_tokens": 14}
-        }"#;
-        let parsed: ChatResponse = serde_json::from_str(body).unwrap();
-        assert_eq!(parsed.choices[0].message.content, "hello there");
-        assert_eq!(parsed.usage.unwrap().completion_tokens, 4);
-    }
-
-    #[test]
-    fn parses_error_envelope() {
-        let body = r#"{"error": {"message": "model not found", "type": "invalid_request"}}"#;
-        let env: ErrorEnvelope = serde_json::from_str(body).unwrap();
-        assert_eq!(env.error.message, "model not found");
-    }
-}
-
-use std::time::Duration;
-
-use reqwest::{Client, StatusCode};
-
-use crate::provider::{LlmRequest, LlmResponse, ProviderError, Usage};
 
 pub(crate) struct OpenAiLikeClient {
     pub(crate) http: Client,
@@ -194,5 +145,51 @@ async fn map_http_error(
                 .unwrap_or_else(|_| format!("HTTP {}", status.as_u16()));
             ProviderError::BadRequest { provider, message }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serializes_request_with_required_fields() {
+        let req = ChatRequest {
+            model: "gpt-4o-mini",
+            messages: vec![
+                ChatMessage { role: "system", content: "be brief" },
+                ChatMessage { role: "user", content: "hi" },
+            ],
+            max_tokens: 128,
+            temperature: 0.7,
+        };
+        let json = serde_json::to_value(&req).unwrap();
+        assert_eq!(json["model"], "gpt-4o-mini");
+        assert_eq!(json["max_tokens"], 128);
+        let temp = json["temperature"].as_f64().unwrap();
+        assert!((temp - 0.7).abs() < 1e-6, "temperature {temp} not close to 0.7");
+        assert_eq!(json["messages"][0]["role"], "system");
+        assert_eq!(json["messages"][1]["content"], "hi");
+    }
+
+    #[test]
+    fn parses_response_choices() {
+        let body = r#"{
+            "model": "gpt-4o-mini-2024-07-18",
+            "choices": [
+                {"message": {"role": "assistant", "content": "hello there"}}
+            ],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 4, "total_tokens": 14}
+        }"#;
+        let parsed: ChatResponse = serde_json::from_str(body).unwrap();
+        assert_eq!(parsed.choices[0].message.content, "hello there");
+        assert_eq!(parsed.usage.unwrap().completion_tokens, 4);
+    }
+
+    #[test]
+    fn parses_error_envelope() {
+        let body = r#"{"error": {"message": "model not found", "type": "invalid_request"}}"#;
+        let env: ErrorEnvelope = serde_json::from_str(body).unwrap();
+        assert_eq!(env.error.message, "model not found");
     }
 }
