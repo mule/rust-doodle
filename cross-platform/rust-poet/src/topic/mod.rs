@@ -32,6 +32,23 @@ pub enum TopicError {
     BadInput(String),
 }
 
+use crate::config::ConfigError;
+
+pub fn build(name: &str, topic_arg: Option<&str>) -> Result<Box<dyn TopicSource>, ConfigError> {
+    match name {
+        "fixed" => {
+            let seed = topic_arg.ok_or(ConfigError::InvalidValue {
+                field: "topic",
+                message: "--topic is required when --source=fixed".into(),
+            })?;
+            Ok(Box::new(fixed::FixedTopic::new(seed)))
+        }
+        "random" => Ok(Box::new(random::RandomTopic::new())),
+        "wikipedia" => Ok(Box::new(wikipedia::WikipediaOnThisDay::new())),
+        other => Err(ConfigError::UnknownSource(other.to_string())),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -39,5 +56,25 @@ mod tests {
     #[test]
     fn topic_source_is_object_safe() {
         fn _assert(_: Box<dyn TopicSource>) {}
+    }
+
+    use crate::config::ConfigError;
+
+    #[test]
+    fn build_fixed_requires_topic() {
+        let Err(err) = build("fixed", None) else { panic!("expected Err"); };
+        assert!(matches!(err, ConfigError::InvalidValue { field: "topic", .. }));
+    }
+
+    #[test]
+    fn build_random_ignores_topic() {
+        let s = build("random", None).unwrap();
+        assert_eq!(s.name(), "random");
+    }
+
+    #[test]
+    fn build_unknown_errors() {
+        let Err(err) = build("notreal", None) else { panic!("expected Err"); };
+        assert!(matches!(err, ConfigError::UnknownSource(_)));
     }
 }
