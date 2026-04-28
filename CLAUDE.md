@@ -16,6 +16,9 @@ cargo build --manifest-path cross-platform/hello-bevy-advanced/Cargo.toml
 cargo build --manifest-path cross-platform/hello-rust/Cargo.toml
 cargo run --manifest-path cross-platform/hello-bevy/Cargo.toml
 cargo run --manifest-path cross-platform/hello-bevy-advanced/Cargo.toml
+cargo build --manifest-path cross-platform/rust-poet/Cargo.toml
+cargo run --manifest-path cross-platform/rust-poet/Cargo.toml -- --topic rain
+cargo test --manifest-path cross-platform/rust-poet/Cargo.toml
 ```
 
 ## Architecture
