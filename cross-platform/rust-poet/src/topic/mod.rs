@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use thiserror::Error;
 
+pub mod fixed;
+
 #[async_trait]
 pub trait TopicSource: Send + Sync {
     fn name(&self) -> &'static str;
