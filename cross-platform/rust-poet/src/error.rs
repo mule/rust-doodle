@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::config::ConfigError;
 use crate::provider::ProviderError;
 use crate::topic::TopicError;
 
@@ -11,6 +12,6 @@ pub enum PoetError {
     #[error(transparent)]
     TopicSource(#[from] TopicError),
 
-    #[error("config: {0}")]
-    Config(String),
+    #[error(transparent)]
+    Config(#[from] ConfigError),
 }
