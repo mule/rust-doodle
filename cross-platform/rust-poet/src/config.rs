@@ -34,7 +34,7 @@ pub enum ConfigError {
     FileParse {
         path: PathBuf,
         #[source]
-        source: ron::de::SpannedError,
+        source: Box<ron::de::SpannedError>,
     },
 
     #[error("config file IO error at {path}: {source}")]
@@ -110,7 +110,7 @@ impl Config {
         })?;
         ron::from_str(&text).map_err(|source| ConfigError::FileParse {
             path: path.clone(),
-            source,
+            source: Box::new(source),
         })
     }
 }
