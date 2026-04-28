@@ -3,6 +3,7 @@ use thiserror::Error;
 
 pub mod fixed;
 pub mod random;
+pub mod wikipedia;
 
 #[async_trait]
 pub trait TopicSource: Send + Sync {
