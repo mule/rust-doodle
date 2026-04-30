@@ -10,6 +10,10 @@ use rust_poet::{provider, topic};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Load .env from cwd (or any ancestor) before anything reads env. Existing process
+    // env wins — `export FOO=bar` overrides `FOO=baz` in .env.
+    let _ = dotenvy::dotenv();
+
     let cli = Cli::parse();
     init_tracing(cli.verbose);
 
