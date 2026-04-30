@@ -10,6 +10,15 @@ use crate::topic::{Topic, TopicError, TopicSource};
 
 const DEFAULT_BASE_URL: &str = "https://en.wikipedia.org/api/rest_v1/feed/onthisday/events";
 
+// Wikipedia's REST API enforces a User-Agent policy and returns 403 for empty UAs.
+// See https://meta.wikimedia.org/wiki/User-Agent_policy — it must identify the tool
+// and provide contact info.
+const USER_AGENT: &str = concat!(
+    "rust-poet/",
+    env!("CARGO_PKG_VERSION"),
+    " (https://github.com/mule/rust-doodle; sandbox/learning project)"
+);
+
 pub struct WikipediaOnThisDay {
     http: Client,
     base_url: String,
@@ -37,7 +46,11 @@ impl WikipediaOnThisDay {
             Some(s) => StdRng::seed_from_u64(s),
             None => StdRng::from_rng(&mut rand::rng()),
         };
-        Self { http: Client::new(), base_url, date, rng: Mutex::new(rng) }
+        let http = Client::builder()
+            .user_agent(USER_AGENT)
+            .build()
+            .expect("reqwest client builds with a static UA");
+        Self { http, base_url, date, rng: Mutex::new(rng) }
     }
 }
 
