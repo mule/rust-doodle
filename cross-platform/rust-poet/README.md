@@ -119,19 +119,20 @@ The `base_url` field lets you point any provider at an OpenAI-compatible proxy (
 
 ## Examples
 
+All commands below use `--manifest-path` so they run from the repo root. If you `cd cross-platform/rust-poet` first, you can drop the flag and just write `cargo run -- ...`.
+
 ```bash
 # Default provider (from config), Wikipedia topic
-cargo run -p rust-poet -- --source wikipedia
+cargo run --manifest-path cross-platform/rust-poet/Cargo.toml -- --source wikipedia
 
 # Anthropic with a fixed topic and lower temperature
-cargo run -p rust-poet -- --provider anthropic --source fixed \
+cargo run --manifest-path cross-platform/rust-poet/Cargo.toml -- \
+    --provider anthropic --source fixed \
     --topic "the smell of an old book" --temperature 0.5
 
 # Inspect what config the CLI will actually use
-cargo run -p rust-poet -- --provider mistral --print-config
+cargo run --manifest-path cross-platform/rust-poet/Cargo.toml -- --provider mistral --print-config
 ```
-
-(`-p rust-poet` works only if you've `cd`-ed into `cross-platform/rust-poet`. From the repo root, use `--manifest-path cross-platform/rust-poet/Cargo.toml --` instead.)
 
 ## Cargo features
 

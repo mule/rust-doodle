@@ -5,7 +5,7 @@ A sandbox for Rust experiments. Each project under `cross-platform/` is an indep
 ## Prerequisites
 
 - **Rust** (2024 edition) — install via [rustup](https://rustup.rs/).
-- **Windows + MSVC**: `.cargo/config.toml` pins the linker to `rust-lld.exe` for faster linking. If `rust-lld` is not on `PATH`, either install it (`rustup component add llvm-tools-preview` then add the toolchain `bin` dir to `PATH`) or remove that file. On Linux/macOS the setting is ignored.
+- **Windows + MSVC**: `.cargo/config.toml` pins the linker to `rust-lld.exe` for faster linking. If your build complains it can't find `rust-lld.exe`, either install LLVM (which provides it) and put it on `PATH`, or simply delete `.cargo/config.toml` to fall back to the default MSVC linker. On Linux/macOS the setting is ignored.
 
 ## Projects
 

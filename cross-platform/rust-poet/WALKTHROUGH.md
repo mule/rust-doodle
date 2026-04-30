@@ -141,19 +141,22 @@ use tracing::{debug, info};
 use tracing_subscriber::EnvFilter;
 
 use rust_poet::cli::Cli;
-use rust_poet::config::Config;
-use rust_poet::poet::{PoemSettings, Poet};
+use rust_poet::{Config, PoemSettings, Poet};
 use rust_poet::{provider, topic};
 ```
 
-`use` brings names into scope. `rust_poet::` is the *library half* of this crate — the binary uses its own library, just like an external user would.
+`use` brings names into scope. `rust_poet::` is the *library half* of this crate — the binary uses its own library, just like an external user would. Notice the asymmetry: `Cli` is reached via the long path `rust_poet::cli::Cli` because it's not re-exported in `lib.rs`, while `Config`, `PoemSettings`, and `Poet` use the short form thanks to the `pub use` lines at the top of the library. (See §2's "Try it" — comment out a re-export and watch this very file fail to compile.)
 
 ### The async entry point
 
 ```rust
 #[tokio::main]
 async fn main() -> Result<()> {
-    let _ = dotenvy::dotenv();
+    match dotenvy::dotenv() {
+        Ok(_) => {}
+        Err(e) if e.not_found() => {}
+        Err(e) => eprintln!("warning: ignoring .env: {e}"),
+    }
     let cli = Cli::parse();
     init_tracing(cli.verbose);
 
@@ -161,6 +164,8 @@ async fn main() -> Result<()> {
     ...
 }
 ```
+
+The `dotenvy::dotenv()` call has three outcomes worth distinguishing: success (loaded), "no `.env` here" (perfectly normal — silent), and "something is wrong with the `.env` you have" (warn so the user isn't surprised when their key isn't there). The match makes those three buckets explicit. We use `eprintln!` rather than `tracing::warn!` because `init_tracing` hasn't run yet.
 
 Several Rust-flavored things in three lines:
 
@@ -584,7 +589,17 @@ pub fn build(name: &str, topic_arg: Option<&str>) -> Result<Box<dyn TopicSource>
             Ok(Box::new(fixed::FixedTopic::new(seed)))
         }
         "random" => Ok(Box::new(random::RandomTopic::new())),
-        "wikipedia" => Ok(Box::new(wikipedia::WikipediaOnThisDay::new())),
+        "wikipedia" => {
+            // WikipediaOnThisDay::new() returns Result because it builds an HTTP
+            // client (which can fail at TLS/DNS init). Convert into ConfigError
+            // so the factory's signature stays uniform.
+            let source = wikipedia::WikipediaOnThisDay::new()
+                .map_err(|e| ConfigError::InvalidValue {
+                    field: "source 'wikipedia'",
+                    message: e.to_string(),
+                })?;
+            Ok(Box::new(source))
+        }
         other => Err(ConfigError::UnknownSource(other.to_string())),
     }
 }
@@ -615,7 +630,7 @@ The braces form a *block expression* whose value is the last expression. We acqu
 > **Rust concept spotlight: interior mutability.**
 > Rust's default rule is "either many shared references *or* one mutable reference, never both." For genuinely shared mutable state, escape hatches exist: `RefCell` (single-threaded, runtime-checked), `Mutex`/`RwLock` (multi-threaded, blocking), `Atomic*` (lock-free primitives). They all work *through* `&self`, by checking borrow rules at runtime instead of compile time.
 
-> **Try it:** Open `src/topic/wikipedia.rs` and try changing the field `rng: Mutex<StdRng>` to `rng: StdRng`. Adjust the call site to use `self.rng.random_range(...)` directly (no `.lock()`). Run `cargo build --manifest-path Cargo.toml`. The error you'll get is *"cannot borrow `self.rng` as mutable, as `self` is a `&` reference"*. That's the borrow checker enforcing the rule mentioned above. Two ways out:
+> **Try it:** Open `src/topic/wikipedia.rs` and try changing the field `rng: Mutex<StdRng>` to `rng: StdRng`. Then in `next_topic()`, replace the entire `let idx = { ... };` block (the one that calls `self.rng.lock()`) with a single line: `let idx = self.rng.random_range(0..feed.events.len());`. Run `cargo build --manifest-path Cargo.toml`. The error you'll get is *"cannot borrow `self.rng` as mutable, as `self` is a `&` reference"*. That's the borrow checker enforcing the rule mentioned above. Two ways out:
 > - **(a)** Put the `Mutex` back — interior mutability through `&self`. ✓ Works for shared instances.
 > - **(b)** Change the trait method to `async fn next_topic(&mut self)` — but that breaks the `Box<dyn TopicSource>` sharing model and requires every caller to hold an exclusive reference.
 >
@@ -723,26 +738,23 @@ A few things to notice:
 
 Why feature-gate this? `MockLlmProvider` is useful for *consumers*' tests, not just our own — but they don't want it in their production builds. The `test-utils` feature makes it opt-in.
 
-> **Try it:** Add a test to `tests/poet_pipeline.rs` that proves the mock recorded its request:
+> **Try it:** Add a test to `tests/poet_pipeline.rs` that wires `MockLlmProvider` through the full `Poet` pipeline and asserts the mock's text appears on the other side:
 > ```rust
-> use std::sync::Arc;
->
 > #[tokio::test]
-> async fn mock_records_the_request() {
->     let mock = Arc::new(MockLlmProvider::with_text("test poem"));
->     let provider = Box::new(Arc::clone(&mock));      // hint: Arc<T> implements LlmProvider when T does
+> async fn mock_returns_its_text_through_poet() {
+>     let provider = Box::new(MockLlmProvider::with_text("expected text"));
 >     let source = Box::new(rust_poet::topic::fixed::FixedTopic::new("rain"));
 >     let settings = PoemSettings { model: "test-model".into(), max_tokens: 1, temperature: 0.0 };
 >
->     let _ = Poet::new(provider, source, settings).generate().await.unwrap();
+>     let poem = Poet::new(provider, source, settings).generate().await.unwrap();
 >
->     let recorded = mock.last_request().expect("mock should have recorded");
->     assert_eq!(recorded.model, "test-model");
+>     assert_eq!(poem.text, "expected text");
+>     assert_eq!(poem.provider, "mock"); // captured from LlmProvider::name()
 > }
 > ```
-> Run `cargo test --manifest-path Cargo.toml --features test-utils mock_records_the_request`. The interesting bit is `Arc<MockLlmProvider>`: it lets you keep a clone for the assertion *and* hand a clone into `Poet::new`. Without `Arc`, you'd have to choose one or the other because `Box<dyn LlmProvider>` consumes the value.
+> Run `cargo test --manifest-path Cargo.toml --features test-utils mock_returns`. If you forget `--features test-utils`, the test file is gated out (look at the `#![cfg(feature = "test-utils")]` at the top of `poet_pipeline.rs`) and the test silently doesn't run — proof the gate works.
 >
-> If the line `Box::new(Arc::clone(&mock))` doesn't compile out of the box, you may need an `impl<T: LlmProvider> LlmProvider for Arc<T>` somewhere — a small extension exercise. (Hint: it's three lines, all forwarding.)
+> **Extension.** `MockLlmProvider` also has a `last_request()` method to interrogate what the mock saw. To use it, you'd need to keep a handle to the mock *after* `Box::new` consumes it. The standard pattern is `Arc<T>` plus a small forwarding `impl<T: LlmProvider + ?Sized> LlmProvider for Arc<T>` (about 7 lines including the `#[async_trait]` macro). Because of the orphan rule, that impl has to live inside `rust_poet` (e.g., `src/test_utils.rs` gated by the `test-utils` feature) — an integration test in `tests/` cannot define it. Try wiring this up if you want the practice.
 
 > **Read more:** [The Cargo Book — Features](https://doc.rust-lang.org/cargo/reference/features.html)
 
