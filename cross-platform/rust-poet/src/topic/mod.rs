@@ -30,6 +30,11 @@ pub enum TopicError {
 
     #[error("bad input: {0}")]
     BadInput(String),
+
+    // No #[from] here because Network already converts reqwest::Error. ClientBuild is
+    // for failures during Client::builder().build() — typically TLS-backend or DNS init.
+    #[error("failed to build HTTP client: {0}")]
+    ClientBuild(reqwest::Error),
 }
 
 use crate::config::ConfigError;
@@ -44,7 +49,15 @@ pub fn build(name: &str, topic_arg: Option<&str>) -> Result<Box<dyn TopicSource>
             Ok(Box::new(fixed::FixedTopic::new(seed)))
         }
         "random" => Ok(Box::new(random::RandomTopic::new())),
-        "wikipedia" => Ok(Box::new(wikipedia::WikipediaOnThisDay::new())),
+        "wikipedia" => {
+            let source = wikipedia::WikipediaOnThisDay::new().map_err(|e| {
+                ConfigError::InvalidValue {
+                    field: "source 'wikipedia'",
+                    message: e.to_string(),
+                }
+            })?;
+            Ok(Box::new(source))
+        }
         other => Err(ConfigError::UnknownSource(other.to_string())),
     }
 }

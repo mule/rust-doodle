@@ -4,15 +4,21 @@ use tracing::{debug, info};
 use tracing_subscriber::EnvFilter;
 
 use rust_poet::cli::Cli;
-use rust_poet::config::Config;
-use rust_poet::poet::{PoemSettings, Poet};
+use rust_poet::{Config, PoemSettings, Poet};
 use rust_poet::{provider, topic};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Load .env from cwd (or any ancestor) before anything reads env. Existing process
-    // env wins — `export FOO=bar` overrides `FOO=baz` in .env.
-    let _ = dotenvy::dotenv();
+    // env wins — `export FOO=bar` overrides `FOO=baz` in .env. Missing .env is fine;
+    // anything else (malformed syntax, permission denied) gets a one-line warning so
+    // the user isn't silently running with stale env. Runs before init_tracing, so we
+    // use eprintln! rather than tracing::warn!.
+    match dotenvy::dotenv() {
+        Ok(_) => {}
+        Err(e) if e.not_found() => {}
+        Err(e) => eprintln!("warning: ignoring .env: {e}"),
+    }
 
     let cli = Cli::parse();
     init_tracing(cli.verbose);

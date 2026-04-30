@@ -28,7 +28,8 @@ pub struct WikipediaOnThisDay {
 
 impl WikipediaOnThisDay {
     /// Production constructor: uses today's local date and a random seed.
-    pub fn new() -> Self {
+    /// Fails if the underlying HTTP client cannot be built (rare — typically TLS init).
+    pub fn new() -> Result<Self, TopicError> {
         Self::with_base_url_and_date(
             DEFAULT_BASE_URL.into(),
             chrono::Local::now().date_naive(),
@@ -41,7 +42,7 @@ impl WikipediaOnThisDay {
         base_url: String,
         date: NaiveDate,
         rng_seed: Option<u64>,
-    ) -> Self {
+    ) -> Result<Self, TopicError> {
         let rng = match rng_seed {
             Some(s) => StdRng::seed_from_u64(s),
             None => StdRng::from_rng(&mut rand::rng()),
@@ -49,14 +50,8 @@ impl WikipediaOnThisDay {
         let http = Client::builder()
             .user_agent(USER_AGENT)
             .build()
-            .expect("reqwest client builds with a static UA");
-        Self { http, base_url, date, rng: Mutex::new(rng) }
-    }
-}
-
-impl Default for WikipediaOnThisDay {
-    fn default() -> Self {
-        Self::new()
+            .map_err(TopicError::ClientBuild)?;
+        Ok(Self { http, base_url, date, rng: Mutex::new(rng) })
     }
 }
 
