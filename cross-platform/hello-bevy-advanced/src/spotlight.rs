@@ -61,9 +61,10 @@ pub fn spawn_spotlight(
     ));
 }
 
-pub fn track_mouse(
+pub fn track_pointer(
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
+    touches: Res<Touches>,
     mut materials: ResMut<Assets<SpotlightMaterial>>,
     handle: Option<Res<SpotlightHandle>>,
 ) {
@@ -72,11 +73,17 @@ pub fn track_mouse(
     let Ok(window) = windows.single() else { return };
     let Ok((camera, camera_transform)) = camera_query.single() else { return };
 
-    if let Some(cursor_pos) = window.cursor_position() {
-        if let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos) {
-            mat.uniforms.mouse_pos = world_pos;
-        }
-    }
-
     mat.uniforms.viewport_size = Vec2::new(window.width(), window.height());
+
+    // Prefer the first active touch; fall back to the mouse cursor on desktop.
+    // When neither is active, idle at world origin = viewport center under Camera2d.
+    let viewport_pos = touches
+        .iter()
+        .next()
+        .map(|t| t.position())
+        .or_else(|| window.cursor_position());
+
+    mat.uniforms.mouse_pos = viewport_pos
+        .and_then(|p| camera.viewport_to_world_2d(camera_transform, p).ok())
+        .unwrap_or(Vec2::ZERO);
 }

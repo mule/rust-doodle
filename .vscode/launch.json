@@ -8,7 +8,7 @@
             "cargo": {
                 "args": ["build", "--manifest-path", "cross-platform/hello-bevy-advanced/Cargo.toml"],
                 "filter": {
-                    "name": "hello-bevy-advanced",
+                    "name": "hello-bevy-advanced-bin",
                     "kind": "bin"
                 }
             },

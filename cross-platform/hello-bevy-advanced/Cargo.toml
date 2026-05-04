@@ -3,6 +3,17 @@ name = "hello-bevy-advanced"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "hello_bevy_advanced"
+crate-type = ["cdylib", "rlib"]
+
+# Distinct bin name avoids a Windows PDB output-filename collision with the lib
+# (cargo normalizes hyphens to underscores, so `hello-bevy-advanced` and
+# `hello_bevy_advanced` both want to write `hello_bevy_advanced.pdb`).
+[[bin]]
+name = "hello-bevy-advanced-bin"
+path = "src/main.rs"
+
 [profile.dev]
 opt-level = 1
 
