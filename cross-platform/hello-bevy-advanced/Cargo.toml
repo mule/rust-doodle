@@ -21,7 +21,48 @@ opt-level = 1
 opt-level = 3
 
 [dependencies]
-bevy = "0.18.1"
+# Bevy 0.18's `default` transitively enables `android-game-activity`, but cargo-apk
+# (and xbuild) only generate manifests for `android.app.NativeActivity` and don't
+# bundle the GameActivity Java glue. To match cargo-apk's NativeActivity manifest,
+# we opt out of defaults and re-list the `default` set with `android-game-activity`
+# swapped for `android-native-activity`. Cargo features can't be subtracted, hence
+# the verbose enumeration.
+bevy = { version = "0.18.1", default-features = false, features = [
+    # default_app
+    "async_executor", "bevy_asset", "bevy_input_focus", "bevy_log",
+    "bevy_state", "bevy_window", "custom_cursor", "reflect_auto_register",
+    # default_platform — NativeActivity instead of GameActivity
+    "std", "android-native-activity", "android_shared_stdcxx",
+    "bevy_gilrs", "bevy_winit", "default_font", "multi_threaded",
+    "webgl2", "x11", "wayland", "sysinfo_plugin",
+    # 2d rendering pipeline
+    "2d_api", "bevy_render", "bevy_core_pipeline", "bevy_post_process",
+    "bevy_sprite_render", "bevy_gizmos_render",
+    # `ui`, `scene`, `audio`, `picking` are intentionally omitted: `ui` re-enables
+    # default_platform (which drags android-game-activity back in), and the others
+    # aren't used by this app.
+] }
 serde = { version = "1", features = ["derive"] }
 ron = "0.12"
 rand = "0.10"
+
+# cargo-apk metadata: drives manifest generation, asset bundling, and SDK targeting.
+# Activity backend (GameActivity) is auto-detected from Bevy's android-activity feature.
+[package.metadata.android]
+package = "com.example.hello_bevy_advanced"
+apk_name = "hello-bevy-advanced"
+assets = "assets"
+build_targets = ["aarch64-linux-android"]
+
+[package.metadata.android.sdk]
+min_sdk_version = 24
+target_sdk_version = 33
+
+[package.metadata.android.application]
+label = "Hello Bevy Advanced"
+
+# Handle a comprehensive set of config changes ourselves; otherwise Android
+# destroys & recreates the activity on events like maximize/multi-window
+# resize/dpi change, which invalidates Bevy's wgpu surface and crashes.
+[package.metadata.android.application.activity]
+config_changes = "orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|density|layoutDirection|colorMode|uiMode|locale|fontScale|navigation"

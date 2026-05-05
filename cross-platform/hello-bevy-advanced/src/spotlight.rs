@@ -9,10 +9,10 @@ use crate::config::AppConfig;
 
 #[derive(ShaderType, Clone)]
 pub struct SpotlightUniforms {
+    // mouse_pos is in physical framebuffer pixels to match WGSL's frag_pos.
     pub mouse_pos: Vec2,
     pub radius: f32,
     pub intensity: f32,
-    pub viewport_size: Vec2,
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Clone)]
@@ -46,7 +46,6 @@ pub fn spawn_spotlight(
             mouse_pos: Vec2::ZERO,
             radius: config.spotlight_radius,
             intensity: config.spotlight_intensity,
-            viewport_size: Vec2::new(w, h),
         },
     });
 
@@ -63,27 +62,33 @@ pub fn spawn_spotlight(
 
 pub fn track_pointer(
     windows: Query<&Window>,
-    camera_query: Query<(&Camera, &GlobalTransform)>,
     touches: Res<Touches>,
+    config: Res<AppConfig>,
     mut materials: ResMut<Assets<SpotlightMaterial>>,
     handle: Option<Res<SpotlightHandle>>,
 ) {
     let Some(handle) = handle else { return };
     let Some(mat) = materials.get_mut(&handle.0) else { return };
     let Ok(window) = windows.single() else { return };
-    let Ok((camera, camera_transform)) = camera_query.single() else { return };
 
-    mat.uniforms.viewport_size = Vec2::new(window.width(), window.height());
+    let scale = window.scale_factor() as f32;
+    let physical_size = Vec2::new(
+        window.physical_width() as f32,
+        window.physical_height() as f32,
+    );
+
+    // Scale radius so the spotlight feels the same proportional size at any DPI.
+    mat.uniforms.radius = config.spotlight_radius * scale;
 
     // Prefer the first active touch; fall back to the mouse cursor on desktop.
-    // When neither is active, idle at world origin = viewport center under Camera2d.
-    let viewport_pos = touches
-        .iter()
-        .next()
-        .map(|t| t.position())
-        .or_else(|| window.cursor_position());
+    // On Android, cursor_position() returns a stale Some(Vec2::ZERO) rather than
+    // None, which would lock the spotlight at the top-left — so we skip it there.
+    let logical_pos = touches.iter().next().map(|t| t.position());
+    #[cfg(not(target_os = "android"))]
+    let logical_pos = logical_pos.or_else(|| window.cursor_position());
 
-    mat.uniforms.mouse_pos = viewport_pos
-        .and_then(|p| camera.viewport_to_world_2d(camera_transform, p).ok())
-        .unwrap_or(Vec2::ZERO);
+    // mouse_pos in physical pixels to match WGSL's frag_pos. Idle at center.
+    mat.uniforms.mouse_pos = logical_pos
+        .map(|p| p * scale)
+        .unwrap_or(physical_size * 0.5);
 }
