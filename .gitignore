@@ -8,6 +8,10 @@ target
 .env.local
 *.env.local
 
+# Per-developer tool state (Claude Code local settings, superpowers plugin scratch)
+.claude/settings.local.json
+.superpowers/
+
 # Per-developer rust-poet config (poet.example.ron is the committed sample)
 /cross-platform/rust-poet/poet.ron
 
