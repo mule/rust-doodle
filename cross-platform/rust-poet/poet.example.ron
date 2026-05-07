@@ -1,0 +1,25 @@
+// Sample configuration for rust-poet.
+// Copy this to ./poet.ron, $XDG_CONFIG_HOME/rust-poet/poet.ron (Linux/macOS),
+// or %APPDATA%\rust-poet\poet.ron (Windows), then edit to taste.
+//
+// API keys are read from environment variables — never put them here:
+//   OPENAI_API_KEY     — for --provider openai
+//   ANTHROPIC_API_KEY  — for --provider anthropic
+//   MISTRAL_API_KEY    — for --provider mistral
+(
+    default_provider: "openai",
+    default_source:   "wikipedia",
+
+    providers: {
+        "openai":    (model: "gpt-4o-mini",          base_url: None),
+        "anthropic": (model: "claude-haiku-4-5",     base_url: None),
+        "mistral":   (model: "mistral-small-latest", base_url: None),
+    },
+
+    poem: (
+        max_tokens:  400,
+        temperature: 0.9,
+    ),
+
+    request_timeout_secs: 30,
+)
