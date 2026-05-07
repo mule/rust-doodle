@@ -13,7 +13,7 @@ A sandbox for Rust experiments. Each project under `cross-platform/` is an indep
 |---|---|
 | [`cross-platform/hello-rust`](cross-platform/hello-rust) | Minimal `println!` — sanity check that the toolchain works. |
 | [`cross-platform/hello-bevy`](cross-platform/hello-bevy) | Bevy 0.18 hello-world: centered text, custom font, RON-loaded config. |
-| [`cross-platform/hello-bevy-advanced`](cross-platform/hello-bevy-advanced) | Bevy 0.18 with a custom WGSL spotlight shader, particles, and animated text wave. |
+| [`cross-platform/hello-bevy-advanced`](cross-platform/hello-bevy-advanced) | Bevy 0.18 with a custom WGSL spotlight shader, particles, and animated text wave. Buildable for Android via [`cargo-apk`](https://github.com/rust-mobile/cargo-apk) — see [`docs/bevy-android.md`](docs/bevy-android.md). |
 | [`cross-platform/rust-poet`](cross-platform/rust-poet) | CLI that generates poems via OpenAI / Anthropic / Mistral, with pluggable topic sources (fixed text, random seeds, Wikipedia "On this day"). Loads API keys from `.env` or shell. See its [README](cross-platform/rust-poet/README.md). |
 
 ## Running the experiments
@@ -40,6 +40,23 @@ cargo run --manifest-path cross-platform/hello-bevy-advanced/Cargo.toml
 
 Adds a WGSL shader at `assets/shaders/spotlight.wgsl`, a particle system, and a text-wave effect. First build is slow because of Bevy; subsequent builds use the dev profile's `opt-level = 1` for the crate plus `opt-level = 3` for dependencies.
 
+**Android** (only this crate is set up for it). For the conceptual deep-dive — coordinate spaces, activity-backend gotcha, feature-list workaround, diagnostic toolkit — see [`docs/bevy-android.md`](docs/bevy-android.md). The minimum to build and deploy:
+
+```bash
+# One-time toolchain setup (Windows shown; Linux/macOS analogous):
+#  - JDK 17 active for Gradle compatibility (JAVA_HOME points to it; `java -version` reports 17)
+#  - Android SDK + platform-tools (provides adb); set ANDROID_HOME
+#  - Android NDK r26+; set ANDROID_NDK_HOME
+rustup target add aarch64-linux-android
+cargo install cargo-apk
+
+# Build + install + launch on a connected device:
+cd cross-platform/hello-bevy-advanced
+adb devices                       # confirm device is listed and authorized
+cargo apk run --lib               # `--lib` mandatory because the crate also has a [[bin]]
+cargo apk run --lib --release     # smaller APK, optimized
+```
+
 ### rust-poet
 
 ```bash
@@ -61,6 +78,7 @@ Full CLI flags, config-file format, env vars, and feature flags are documented i
 .cargo/config.toml          # global cargo settings (Windows linker)
 .vscode/launch.json         # CodeLLDB debug configs per project
 cross-platform/             # standalone crates
+docs/                       # cross-cutting guides (e.g., bevy-android.md)
 docs/superpowers/           # design specs and implementation plans
 CLAUDE.md                   # guidance for Claude Code working in this repo
 ```

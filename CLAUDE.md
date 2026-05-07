@@ -21,6 +21,8 @@ cargo run --manifest-path cross-platform/rust-poet/Cargo.toml -- --topic rain
 cargo test --manifest-path cross-platform/rust-poet/Cargo.toml
 ```
 
+For **Android builds** of `hello-bevy-advanced` (the only crate currently set up for Android): use `cargo apk run --lib` from the crate directory. Toolchain: `cargo-apk` (`cargo install cargo-apk`), Android NDK r26+, JDK 17, `aarch64-linux-android` Rust target. See [`docs/bevy-android.md`](docs/bevy-android.md) for the working-developer's guide — coordinate spaces, activity backend gotcha, feature-list workaround, diagnostic toolkit.
+
 ## Architecture
 
 - **No Cargo workspace** — projects are independent crates under topic directories (e.g., `cross-platform/`).
@@ -29,3 +31,4 @@ cargo test --manifest-path cross-platform/rust-poet/Cargo.toml
 - **Assets** (fonts, textures, shaders) go in each project's `assets/` directory, loaded via Bevy's `AssetServer`.
 - **Custom shaders** (WGSL) go in `assets/shaders/` and are loaded as asset paths (e.g., `"shaders/spotlight.wgsl"`).
 - **VS Code** launch configs are in `.vscode/launch.json` using CodeLLDB for debugging.
+- **Android entry point** (`hello-bevy-advanced` only): the crate is a `cdylib`+`rlib` library — `src/lib.rs` holds the `#[bevy_main]`-annotated entry, `src/main.rs` is a thin desktop wrapper that calls into the library. Configuration and asset loading paths in this crate are `cfg(target_os = "android")`-split; mirror that pattern if porting other crates later.
