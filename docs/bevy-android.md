@@ -1,5 +1,7 @@
 # Bevy on Android — a working-developer's guide
 
+> Last verified against Bevy 0.18.1 and cargo-apk 0.10.x on 2026-05-07. Bevy's feature graph and cargo-apk's manifest behaviour shift between minor versions — re-verify version-specific details on upgrade.
+
 Practical lessons from porting a Bevy 0.18 app to a Samsung Galaxy Tab S9 (Snapdragon 8 Gen 2, Android 14, scale_factor ~2.0). Focused on Windows hosts, but most of the conceptual material applies anywhere.
 
 This guide is organised so you can either skim the **Quick start** and follow the cookbook, or read **Concepts** to understand *why* things are the way they are. The "gotchas" you don't catch on day one are usually conceptual, not procedural.
@@ -27,7 +29,7 @@ That's the happy path. Everything below is the underwater bulk of the iceberg.
 
 Bevy 0.18's default features enable `android-game-activity` — meaning your `.so` exports the modern GameActivity bootstrap (`Java_androidx_games_GameActivity_*`). GameActivity gives better text input, more reliable lifecycle hooks, and supports newer Android features.
 
-But `cargo-apk` (and `xbuild`) **only ever generate `android.app.NativeActivity` manifests**. This is a design choice — those tools intentionally don't invoke `javac`/`d8`, so they can't bundle the GameActivity Java glue (`classes.dex`) that the runtime needs to instantiate the activity class. Confirmed in `ndk-build-0.10.0/src/manifest.rs:331` (the `default_activity_name` literal).
+But `cargo-apk` (and `xbuild`) **only ever generate `android.app.NativeActivity` manifests**. This is a design choice — those tools intentionally don't invoke `javac`/`d8`, so they can't bundle the GameActivity Java glue (`classes.dex`) that the runtime needs to instantiate the activity class. Confirmed by the `default_activity_name` literal in `ndk-build`'s `src/manifest.rs`.
 
 The runtime mismatch is severe:
 - Manifest says NativeActivity → Android calls `ANativeActivity_onCreate` on your `.so`.
@@ -154,10 +156,10 @@ config_changes = "orientation|keyboardHidden|keyboard|screenSize|smallestScreenS
 
 Verify the resulting manifest with:
 ```bash
-"D:/AndroidSDK/build-tools/<latest>/aapt2.exe" dump xmltree \
+"<AndroidSDK>/build-tools/<latest>/aapt2.exe" dump xmltree \
     --file AndroidManifest.xml target/debug/apk/<app>.apk
 ```
-The `configChanges` attribute should show as `0x40007ff4` (or similar large bitmap) instead of the default `0x4a0`.
+The `configChanges` attribute should show as a large bitmap (each bit corresponds to one change type in the `config_changes` string above) rather than the default `0x4a0`.
 
 ### Hybrid `cdylib` + `rlib` + `[[bin]]`
 
@@ -264,7 +266,7 @@ For *this* sandbox, deferring iOS until there's a Mac available is the pragmatic
 ### Inspect the generated AndroidManifest
 
 ```bash
-"D:/AndroidSDK/build-tools/36.0.0/aapt2.exe" dump xmltree \
+"<AndroidSDK>/build-tools/<latest>/aapt2.exe" dump xmltree \
     --file AndroidManifest.xml \
     target/debug/apk/<app>.apk
 ```
@@ -272,7 +274,7 @@ For *this* sandbox, deferring iOS until there's a Mac available is the pragmatic
 What to check:
 - `activity name` is `android.app.NativeActivity` (matches what the `.so` exports)
 - `meta-data android.app.lib_name` matches your `[lib] name` in Cargo.toml
-- `configChanges` is `0x40007ff4` (comprehensive) or whatever set you configured
+- `configChanges` is a large bitmap matching your `config_changes` string (not the default `0x4a0`)
 - `compileSdkVersion` and `targetSdkVersion` are sane
 
 ### Verify the activity-backend feature graph

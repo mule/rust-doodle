@@ -9,7 +9,6 @@ mod text_wave;
 #[bevy_main]
 pub fn main() {
     let config = config::load_config();
-    let [r, g, b, a] = config.background_color;
 
     let default_plugins = DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
@@ -19,17 +18,26 @@ pub fn main() {
         ..default()
     });
 
-    // Desktop reads assets from a filesystem path baked in at build time.
-    // Android pulls them from the APK via AAssetManager, which is Bevy's default.
+    // Desktop reads assets from a filesystem path baked in at build time, so a
+    // binary moved away from CARGO_MANIFEST_DIR fails fast here rather than
+    // booting to a black screen via Bevy's per-asset error logs. Android pulls
+    // assets from the APK via AAssetManager, which is Bevy's default.
     #[cfg(not(target_os = "android"))]
-    let default_plugins = default_plugins.set(AssetPlugin {
-        file_path: config::ASSETS_DIR.to_string(),
-        ..default()
-    });
+    let default_plugins = {
+        assert!(
+            std::path::Path::new(config::ASSETS_DIR).is_dir(),
+            "Assets dir not found: '{}'. Was this binary moved away from CARGO_MANIFEST_DIR?",
+            config::ASSETS_DIR,
+        );
+        default_plugins.set(AssetPlugin {
+            file_path: config::ASSETS_DIR.to_string(),
+            ..default()
+        })
+    };
 
     App::new()
         .add_plugins(default_plugins)
-        .insert_resource(ClearColor(Color::srgba(r, g, b, a)))
+        .insert_resource(ClearColor(config.background_color.into()))
         .insert_resource(config)
         .add_plugins(Material2dPlugin::<spotlight::SpotlightMaterial>::default())
         .add_systems(Startup, setup_camera)

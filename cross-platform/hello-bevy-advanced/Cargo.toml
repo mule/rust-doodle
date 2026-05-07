@@ -47,7 +47,8 @@ ron = "0.12"
 rand = "0.10"
 
 # cargo-apk metadata: drives manifest generation, asset bundling, and SDK targeting.
-# Activity backend (GameActivity) is auto-detected from Bevy's android-activity feature.
+# cargo-apk only ever emits NativeActivity manifests — the .so must export
+# NativeActivity entry points (see android-native-activity feature above).
 [package.metadata.android]
 package = "com.example.hello_bevy_advanced"
 apk_name = "hello-bevy-advanced"

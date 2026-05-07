@@ -11,7 +11,9 @@ var<uniform> uniforms: SpotlightUniforms;
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
-    // frag_pos and mouse_pos are both in physical framebuffer pixels.
+    // in.position.xy and uniforms.mouse_pos are both in physical framebuffer
+    // pixels; no scale conversion here. Field order must match SpotlightUniforms
+    // in src/spotlight.rs.
     let dist = distance(in.position.xy, uniforms.mouse_pos);
     let falloff = 1.0 - smoothstep(0.0, uniforms.radius, dist);
     let brightness = falloff * uniforms.intensity;

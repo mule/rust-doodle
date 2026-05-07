@@ -37,7 +37,9 @@ pub fn spawn_spotlight(
     config: Res<AppConfig>,
     windows: Query<&Window>,
 ) {
-    let Ok(window) = windows.single() else { return };
+    let window = windows
+        .single()
+        .expect("primary window required at Startup to size spotlight quad");
     let w = window.width();
     let h = window.height();
 
@@ -68,7 +70,9 @@ pub fn track_pointer(
     handle: Option<Res<SpotlightHandle>>,
 ) {
     let Some(handle) = handle else { return };
-    let Some(mat) = materials.get_mut(&handle.0) else { return };
+    let mat = materials
+        .get_mut(&handle.0)
+        .expect("SpotlightMaterial asset missing despite handle resource being present");
     let Ok(window) = windows.single() else { return };
 
     let scale = window.scale_factor() as f32;
@@ -77,7 +81,8 @@ pub fn track_pointer(
         window.physical_height() as f32,
     );
 
-    // Scale radius so the spotlight feels the same proportional size at any DPI.
+    // radius is configured in logical pixels; convert to physical to match
+    // mouse_pos and in.position.xy units in the shader.
     mat.uniforms.radius = config.spotlight_radius * scale;
 
     // Prefer the first active touch; fall back to the mouse cursor on desktop.
