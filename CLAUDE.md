@@ -16,6 +16,9 @@ cargo build --manifest-path cross-platform/hello-bevy-advanced/Cargo.toml
 cargo build --manifest-path cross-platform/hello-rust/Cargo.toml
 cargo run --manifest-path cross-platform/hello-bevy/Cargo.toml
 cargo run --manifest-path cross-platform/hello-bevy-advanced/Cargo.toml
+cargo build --manifest-path cross-platform/rust-poet/Cargo.toml
+cargo run --manifest-path cross-platform/rust-poet/Cargo.toml -- --topic rain
+cargo test --manifest-path cross-platform/rust-poet/Cargo.toml
 ```
 
 For **Android builds** of `hello-bevy-advanced` (the only crate currently set up for Android): use `cargo apk run --lib` from the crate directory. Toolchain: `cargo-apk` (`cargo install cargo-apk`), Android NDK r26+, JDK 17, `aarch64-linux-android` Rust target. See [`docs/bevy-android.md`](docs/bevy-android.md) for the working-developer's guide — coordinate spaces, activity backend gotcha, feature-list workaround, diagnostic toolkit.

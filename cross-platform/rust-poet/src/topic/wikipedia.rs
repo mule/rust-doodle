@@ -1,0 +1,119 @@
+use async_trait::async_trait;
+use chrono::{Datelike, NaiveDate};
+use rand::{RngExt, SeedableRng};
+use rand::rngs::StdRng;
+use reqwest::Client;
+use serde::Deserialize;
+use std::sync::Mutex;
+
+use crate::topic::{Topic, TopicError, TopicSource};
+
+const DEFAULT_BASE_URL: &str = "https://en.wikipedia.org/api/rest_v1/feed/onthisday/events";
+
+// Wikipedia's REST API enforces a User-Agent policy and returns 403 for empty UAs.
+// See https://meta.wikimedia.org/wiki/User-Agent_policy — it must identify the tool
+// and provide contact info.
+const USER_AGENT: &str = concat!(
+    "rust-poet/",
+    env!("CARGO_PKG_VERSION"),
+    " (https://github.com/mule/rust-doodle; sandbox/learning project)"
+);
+
+pub struct WikipediaOnThisDay {
+    http: Client,
+    base_url: String,
+    date: NaiveDate,
+    rng: Mutex<StdRng>,
+}
+
+impl WikipediaOnThisDay {
+    /// Production constructor: uses today's local date and a random seed.
+    /// Fails if the underlying HTTP client cannot be built (rare — typically TLS init).
+    pub fn new() -> Result<Self, TopicError> {
+        Self::with_base_url_and_date(
+            DEFAULT_BASE_URL.into(),
+            chrono::Local::now().date_naive(),
+            None,
+        )
+    }
+
+    /// Test/internal constructor: caller controls base URL, date, and (optionally) RNG seed.
+    pub fn with_base_url_and_date(
+        base_url: String,
+        date: NaiveDate,
+        rng_seed: Option<u64>,
+    ) -> Result<Self, TopicError> {
+        let rng = match rng_seed {
+            Some(s) => StdRng::seed_from_u64(s),
+            None => StdRng::from_rng(&mut rand::rng()),
+        };
+        let http = Client::builder()
+            .user_agent(USER_AGENT)
+            .build()
+            .map_err(TopicError::ClientBuild)?;
+        Ok(Self { http, base_url, date, rng: Mutex::new(rng) })
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct Feed {
+    events: Vec<Event>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Event {
+    text: String,
+    year: i32,
+    #[serde(default)]
+    pages: Vec<Page>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Page {
+    #[serde(default)]
+    extract: String,
+}
+
+#[async_trait]
+impl TopicSource for WikipediaOnThisDay {
+    fn name(&self) -> &'static str {
+        "wikipedia"
+    }
+
+    async fn next_topic(&self) -> Result<Topic, TopicError> {
+        let url = format!(
+            "{}/{:02}/{:02}",
+            self.base_url.trim_end_matches('/'),
+            self.date.month(),
+            self.date.day(),
+        );
+
+        let feed: Feed = self.http.get(&url).send().await?.error_for_status()?.json().await?;
+
+        if feed.events.is_empty() {
+            return Err(TopicError::NoEventsForDate);
+        }
+
+        let idx = {
+            let mut rng = self.rng.lock().expect("rng poisoned");
+            rng.random_range(0..feed.events.len())
+        };
+        let event = feed.events.into_iter().nth(idx).expect("idx in range");
+
+        let seed = format!("In {}, {}", event.year, event.text);
+        let context = if event.pages.is_empty() {
+            None
+        } else {
+            let joined = event
+                .pages
+                .iter()
+                .map(|p| p.extract.as_str())
+                .filter(|e| !e.is_empty())
+                .collect::<Vec<_>>()
+                .join("\n\n");
+            (!joined.is_empty()).then_some(joined)
+        };
+
+        Ok(Topic { seed, context })
+    }
+}
