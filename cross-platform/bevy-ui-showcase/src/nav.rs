@@ -2,6 +2,9 @@ use bevy::prelude::*;
 
 use crate::theme::{BgRole, TextRole, Theme};
 
+#[derive(Component)]
+pub struct ThemeToggleLabel;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Section {
     Layout,
@@ -83,7 +86,42 @@ pub fn spawn_tab_bar(commands: &mut Commands) -> Entity {
             .id();
         buttons.push(btn);
     }
-    commands.entity(bar).add_children(&buttons);
+    // Spacer pushes the toggle button to the right edge.
+    let spacer = commands
+        .spawn(Node {
+            flex_grow: 1.0,
+            ..default()
+        })
+        .id();
+
+    // Theme toggle. The label content (sun vs moon glyph) is updated each
+    // frame by `update_theme_toggle_label` so it reflects the current mode.
+    let toggle = commands
+        .spawn((
+            Button,
+            Node {
+                padding: UiRect::axes(Val::Px(16.0), Val::Px(8.0)),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                border_radius: BorderRadius::all(Val::Px(4.0)),
+                ..default()
+            },
+            BackgroundColor::default(),
+            BgRole::TabInactive,
+            crate::theme::ThemeToggle,
+        ))
+        .with_child((
+            Text::new("\u{f185} Light"), // initial: dark mode → offer to switch to Light
+            TextColor::default(),
+            TextRole::Primary,
+            ThemeToggleLabel,
+        ))
+        .id();
+
+    let mut all = buttons; // section tab buttons created above
+    all.push(spacer);
+    all.push(toggle);
+    commands.entity(bar).add_children(&all);
     bar
 }
 
@@ -125,6 +163,21 @@ pub fn update_tab_visuals(
             (true, _) => theme.bg.tab_active,
             (false, Interaction::Hovered | Interaction::Pressed) => theme.bg.tab_hovered,
             (false, Interaction::None) => theme.bg.tab_inactive,
+        };
+    }
+}
+
+pub fn update_theme_toggle_label(
+    theme: Res<Theme>,
+    mut q: Query<&mut Text, With<ThemeToggleLabel>>,
+) {
+    if !theme.is_changed() {
+        return;
+    }
+    for mut text in &mut q {
+        text.0 = match theme.mode {
+            crate::theme::ThemeMode::Dark => "\u{f185} Light".to_string(),  // sun glyph + offer "Light"
+            crate::theme::ThemeMode::Light => "\u{f186} Dark".to_string(),  // moon glyph + offer "Dark"
         };
     }
 }

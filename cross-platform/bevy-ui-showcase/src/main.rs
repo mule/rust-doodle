@@ -66,6 +66,7 @@ fn main() {
                 theme::resolve_border_role,
                 theme::sync_clear_color,
                 theme::handle_theme_toggle,
+                nav::update_theme_toggle_label,
             ),
         )
         .run();
