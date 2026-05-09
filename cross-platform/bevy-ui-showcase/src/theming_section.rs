@@ -128,6 +128,65 @@ pub fn spawn(commands: &mut Commands, _inter_bold: Handle<Font>) -> Entity {
                     }
                 });
             });
+
+            // Border radius row: four panels using sm/md/lg/pill from RadiusTokens.
+            // Radii are constant across themes (light/dark don't change radii), so
+            // we read from a default Theme instance here. This avoids needing to
+            // pipe Res<Theme> through the spawn function.
+            let radii = crate::theme::Theme::default().radius;
+            c.spawn(Node {
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(8.0),
+                ..default()
+            })
+            .with_children(|cell| {
+                cell.spawn((
+                    Text::new("Border radius"),
+                    TextFont { font_size: 18.0, ..default() },
+                    TextColor::default(),
+                    TextRole::Primary,
+                ));
+                cell.spawn(Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(16.0),
+                    padding: UiRect::all(Val::Px(8.0)),
+                    ..default()
+                })
+                .with_children(|row| {
+                    let entries = [
+                        ("sm", radii.sm),
+                        ("md", radii.md),
+                        ("lg", radii.lg),
+                        ("pill", radii.pill),
+                    ];
+                    for (name, radius) in entries {
+                        row.spawn(Node {
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            row_gap: Val::Px(6.0),
+                            ..default()
+                        })
+                        .with_children(|cell| {
+                            cell.spawn((
+                                Node {
+                                    width: Val::Px(72.0),
+                                    height: Val::Px(72.0),
+                                    border_radius: BorderRadius::all(Val::Px(radius)),
+                                    ..default()
+                                },
+                                BackgroundColor::default(),
+                                crate::theme::BgRole::BoxFill,
+                            ));
+                            cell.spawn((
+                                Text::new(name),
+                                TextFont { font_size: 12.0, ..default() },
+                                TextColor::default(),
+                                TextRole::Subtle,
+                            ));
+                        });
+                    }
+                });
+            });
         })
         .id();
 
