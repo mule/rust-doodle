@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::nav::{Section, SectionRoot};
 use crate::theme::{BorderRole, TextRole};
 
-pub fn spawn(commands: &mut Commands, _inter_bold: Handle<Font>) -> Entity {
+pub fn spawn(commands: &mut Commands, inter_bold: Handle<Font>) -> Entity {
     let root = commands
         .spawn((
             Node {
@@ -245,6 +245,51 @@ pub fn spawn(commands: &mut Commands, _inter_bold: Handle<Font>) -> Entity {
                             ));
                         });
                     }
+                });
+            });
+
+            // Typography sample. Inter (proportional, OFL-licensed) for the
+            // heading shows visual contrast against HackNerdFont (monospace)
+            // which is the global default for body and mono rows.
+            // The Inter handle is captured into this closure from spawn's parameter.
+            let inter_bold_clone = inter_bold.clone();
+            c.spawn(Node {
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(8.0),
+                ..default()
+            })
+            .with_children(|cell| {
+                cell.spawn((
+                    Text::new("Typography"),
+                    TextFont { font_size: 18.0, ..default() },
+                    TextColor::default(),
+                    TextRole::Primary,
+                ));
+                cell.spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(8.0),
+                    padding: UiRect::all(Val::Px(8.0)),
+                    ..default()
+                })
+                .with_children(|stack| {
+                    stack.spawn((
+                        Text::new("Heading — Inter Bold, 28px"),
+                        TextFont { font: inter_bold_clone.clone(), font_size: 28.0, ..default() },
+                        TextColor::default(),
+                        TextRole::Primary,
+                    ));
+                    stack.spawn((
+                        Text::new("Body — HackNerdFont (default), 14px"),
+                        TextFont { font_size: 14.0, ..default() },
+                        TextColor::default(),
+                        TextRole::Primary,
+                    ));
+                    stack.spawn((
+                        Text::new("Mono — HackNerdFont, 12px (mono by nature)"),
+                        TextFont { font_size: 12.0, ..default() },
+                        TextColor::default(),
+                        TextRole::Subtle,
+                    ));
                 });
             });
         })
