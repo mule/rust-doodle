@@ -382,7 +382,7 @@ pub fn spawn(commands: &mut Commands) -> Entity {
                                         ..default()
                                     },
                                     BackgroundColor::default(),
-                                    BgRole::EmojiBtnIdle,
+                                    BgRole::SliderTrack,
                                     SliderValue(0.5),
                                     Slider,
                                 ))
@@ -397,7 +397,7 @@ pub fn spawn(commands: &mut Commands) -> Entity {
                                         ..default()
                                     },
                                     BackgroundColor::default(),
-                                    BgRole::BoxFill,
+                                    BgRole::SliderThumb,
                                     SliderThumb,
                                 ))
                                 .id();

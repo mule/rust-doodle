@@ -26,6 +26,8 @@ pub struct BgTokens {
     pub input: Color,
     pub emoji_btn_idle: Color,
     pub emoji_btn_hover: Color,
+    pub slider_track: Color,
+    pub slider_thumb: Color,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -79,6 +81,8 @@ impl Theme {
                 input: Color::srgb(0.10, 0.11, 0.14),
                 emoji_btn_idle: Color::srgb(0.20, 0.22, 0.28),
                 emoji_btn_hover: Color::srgb(0.30, 0.34, 0.40),
+                slider_track: Color::srgb(0.20, 0.22, 0.28),
+                slider_thumb: Color::srgb(0.486, 0.188, 0.188),
             },
             text: TextTokens {
                 primary: Color::srgb(0.92, 0.93, 0.95),
@@ -111,6 +115,8 @@ impl Theme {
                 input: Color::srgb(0.98, 0.98, 0.99),
                 emoji_btn_idle: Color::srgb(0.84, 0.85, 0.89),
                 emoji_btn_hover: Color::srgb(0.74, 0.76, 0.81),
+                slider_track: Color::srgb(0.80, 0.81, 0.84),
+                slider_thumb: Color::srgb(0.65, 0.30, 0.30),
             },
             text: TextTokens {
                 primary: Color::srgb(0.12, 0.13, 0.16),
@@ -152,6 +158,8 @@ pub enum BgRole {
     TabInactive,
     Input,
     EmojiBtnIdle,
+    SliderTrack,
+    SliderThumb,
 }
 
 #[derive(Component, Clone, Copy, Debug)]
@@ -179,6 +187,8 @@ impl BgTokens {
             BgRole::TabInactive => self.tab_inactive,
             BgRole::Input => self.input,
             BgRole::EmojiBtnIdle => self.emoji_btn_idle,
+            BgRole::SliderTrack => self.slider_track,
+            BgRole::SliderThumb => self.slider_thumb,
         }
     }
 }
