@@ -22,6 +22,7 @@ fn main() {
             ..default()
         }))
         .insert_resource(theme::Theme::default())
+        .insert_resource(ClearColor(theme::Theme::default().bg.background))
         .init_resource::<nav::CurrentSection>()
         .init_resource::<widgets_section::FocusedTextInput>()
         .add_systems(
@@ -144,7 +145,8 @@ fn spawn_placeholder(commands: &mut Commands, section: Section) -> Entity {
         ))
         .with_child((
             Text::new(format!("{} — coming in a later phase", section.label())),
-            TextColor(Color::srgb(0.55, 0.57, 0.62)),
+            TextColor::default(),
+            theme::TextRole::Subtle,
         ))
         .id()
 }
