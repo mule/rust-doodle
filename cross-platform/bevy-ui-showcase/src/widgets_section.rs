@@ -636,21 +636,10 @@ pub fn update_click_buttons(
 /// On `Interaction::Pressed`, flip the `Checked` bool on each checkbox and
 /// rewrite the child `CheckboxGlyph` Text to "\u{f00c}" (Nerd Font fa-check)
 /// when checked, or "" when unchecked.
-///
-/// YOUR TURN — fill in the body. Hints:
-///   • Iterate `&mut checkboxes`. Each item is `(&Interaction, &Children, &mut Checked)`.
-///   • Skip iterations where `*interaction != Interaction::Pressed` (with `continue`).
-///   • Flip the bool: `checked.0 = !checked.0;`
-///   • Walk `children.iter()` and call `glyphs.get_mut(child)` to find the glyph
-///     child Text (the same children-walk pattern as `update_click_buttons`).
-///   • Set `text.0` to either "\u{f00c}" (checked) or "" (unchecked) based on
-///     `checked.0`. The "\u{f00c}" escape is Rust's syntax for "the Unicode
-///     code point U+F00C", which HackNerdFont renders as a checkmark icon.
 pub fn update_checkboxes(
     mut checkboxes: Query<(&Interaction, &Children, &mut Checked), Changed<Interaction>>,
     mut glyphs: Query<&mut Text, With<CheckboxGlyph>>,
 ) {
-    // TODO: write ~7 lines following the hints above.
     for (interaction, children, mut checked) in &mut checkboxes {
         if *interaction != Interaction::Pressed {
             continue;
