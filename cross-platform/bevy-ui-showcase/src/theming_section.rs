@@ -187,6 +187,66 @@ pub fn spawn(commands: &mut Commands, _inter_bold: Handle<Font>) -> Entity {
                     }
                 });
             });
+
+            // Border color & width row: four bordered panels demonstrating
+            // BorderRole::Subtle vs BorderRole::Focus at 1px and 3px widths.
+            // Inside fill is BgRole::Surface so the border has visible contrast.
+            c.spawn(Node {
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(8.0),
+                ..default()
+            })
+            .with_children(|cell| {
+                cell.spawn((
+                    Text::new("Border color & width"),
+                    TextFont { font_size: 18.0, ..default() },
+                    TextColor::default(),
+                    TextRole::Primary,
+                ));
+                cell.spawn(Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(16.0),
+                    padding: UiRect::all(Val::Px(8.0)),
+                    ..default()
+                })
+                .with_children(|row| {
+                    let entries: [(&str, crate::theme::BorderRole, f32); 4] = [
+                        ("subtle 1px", crate::theme::BorderRole::Subtle, 1.0),
+                        ("subtle 3px", crate::theme::BorderRole::Subtle, 3.0),
+                        ("focus 1px", crate::theme::BorderRole::Focus, 1.0),
+                        ("focus 3px", crate::theme::BorderRole::Focus, 3.0),
+                    ];
+                    for (name, role, width) in entries {
+                        row.spawn(Node {
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            row_gap: Val::Px(6.0),
+                            ..default()
+                        })
+                        .with_children(|cell| {
+                            cell.spawn((
+                                Node {
+                                    width: Val::Px(96.0),
+                                    height: Val::Px(64.0),
+                                    border: UiRect::all(Val::Px(width)),
+                                    border_radius: BorderRadius::all(Val::Px(4.0)),
+                                    ..default()
+                                },
+                                BackgroundColor::default(),
+                                crate::theme::BgRole::Surface,
+                                BorderColor::default(),
+                                role,
+                            ));
+                            cell.spawn((
+                                Text::new(name),
+                                TextFont { font_size: 12.0, ..default() },
+                                TextColor::default(),
+                                TextRole::Subtle,
+                            ));
+                        });
+                    }
+                });
+            });
         })
         .id();
 
