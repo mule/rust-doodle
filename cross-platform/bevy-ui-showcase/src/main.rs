@@ -4,6 +4,7 @@ use bevy::text::Font;
 mod layout_section;
 mod nav;
 mod theme;
+mod theming_section;
 mod widgets_section;
 
 use nav::{Section, SectionRoot};
@@ -100,7 +101,7 @@ fn maximize_window(mut window: Single<&mut Window>) {
     window.set_maximized(true);
 }
 
-fn setup_root(mut commands: Commands) {
+fn setup_root(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d);
 
     let root = commands
@@ -122,12 +123,13 @@ fn setup_root(mut commands: Commands) {
         .id();
     commands.entity(root).add_children(&[tab_bar, content]);
 
+    let inter_bold: Handle<Font> = asset_server.load("fonts/Inter-Bold.ttf");
+
     let mut sections = Vec::with_capacity(Section::ALL.len());
     sections.push(layout_section::spawn(&mut commands));
     sections.push(widgets_section::spawn(&mut commands));
-    for s in [Section::Theming, Section::Animations] {
-        sections.push(spawn_placeholder(&mut commands, s));
-    }
+    sections.push(theming_section::spawn(&mut commands, inter_bold));
+    sections.push(spawn_placeholder(&mut commands, Section::Animations));
     commands.entity(content).add_children(&sections);
 }
 
