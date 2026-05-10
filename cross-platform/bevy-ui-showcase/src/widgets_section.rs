@@ -597,6 +597,7 @@ pub fn spawn(commands: &mut Commands) -> Entity {
 
 /// Every frame, color the button by its current Interaction state. Same idea as
 /// `nav::update_tab_visuals`, just specialised to widgets-section buttons.
+#[allow(clippy::type_complexity)]
 pub fn update_button_visuals(
     theme: Res<Theme>,
     mut buttons: Query<
@@ -756,6 +757,7 @@ pub fn update_cursor_for_sliders(
 /// On `Pressed` of a TextInput, set it as the focused field in the
 /// `FocusedTextInput` Resource. We use Pressed (not Hovered) so just hovering
 /// doesn't steal focus.
+#[allow(clippy::type_complexity)]
 pub fn update_text_input_focus(
     inputs: Query<(Entity, &Interaction), (Changed<Interaction>, With<TextInput>)>,
     mut focused: ResMut<FocusedTextInput>,
@@ -899,12 +901,11 @@ pub fn handle_emoji_clicks(
         if *interaction != Interaction::Pressed {
             continue;
         }
-        if let Some(target) = focused.0 {
-            if let Ok(mut buffer) = buffers.get_mut(target) {
-                if buffer.0.chars().count() < TEXT_INPUT_MAX_LEN {
-                    buffer.0.push(item.0);
-                }
-            }
+        if let Some(target) = focused.0
+            && let Ok(mut buffer) = buffers.get_mut(target)
+            && buffer.0.chars().count() < TEXT_INPUT_MAX_LEN
+        {
+            buffer.0.push(item.0);
         }
         // Auto-close after a pick — common UX expectation.
         for mut menu_node in &mut menus {
@@ -915,6 +916,7 @@ pub fn handle_emoji_clicks(
 
 /// Hover/press feedback for the emoji menu button and items — same idea as
 /// the click-counter button, just specialized to these widgets.
+#[allow(clippy::type_complexity)]
 pub fn update_emoji_button_visuals(
     theme: Res<Theme>,
     mut buttons: Query<

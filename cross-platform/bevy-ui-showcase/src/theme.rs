@@ -149,7 +149,6 @@ impl Default for Theme {
 
 #[derive(Component, Clone, Copy, Debug)]
 pub enum BgRole {
-    Background,
     Surface,
     BoxFill,
     Accent,
@@ -178,7 +177,6 @@ pub enum BorderRole {
 impl BgTokens {
     pub fn resolve(&self, role: BgRole) -> Color {
         match role {
-            BgRole::Background => self.background,
             BgRole::Surface => self.surface,
             BgRole::BoxFill => self.box_fill,
             BgRole::Accent => self.accent,
