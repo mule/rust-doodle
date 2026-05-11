@@ -1,10 +1,12 @@
 use bevy::input::ButtonState;
 use bevy::input::keyboard::KeyboardInput;
+use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
 use bevy::window::{CursorIcon, SystemCursorIcon};
 
 use crate::nav::{Section, SectionRoot};
 use crate::theme::{BgRole, BorderRole, TextRole, Theme};
+use crate::tween::Tween;
 
 /// Per-button click state. Lives on the Button entity itself.
 #[derive(Component, Default)]
@@ -933,5 +935,37 @@ pub fn update_emoji_button_visuals(
             Interaction::Hovered | Interaction::Pressed => theme.bg.emoji_btn_hover,
             Interaction::None => theme.bg.emoji_btn_idle,
         };
+    }
+}
+
+/// Insert a `Tween<f32>` on `UiTransform.scale` whenever a `ClickCount`
+/// button's `Interaction` changes. Reads the current scale (mid-tween or
+/// not) so a fast re-hover continues smoothly from the visible position
+/// rather than snapping to 1.0.
+///
+/// Tab buttons / slider tracks / emoji buttons are NOT targeted (filter
+/// uses `With<ClickCount>`), so chrome stays instant.
+#[allow(clippy::type_complexity)]
+pub fn dispatch_button_hover_scale(
+    mut commands: Commands,
+    q: Query<
+        (Entity, &Interaction, &UiTransform),
+        (Changed<Interaction>, With<ClickCount>),
+    >,
+) {
+    for (entity, interaction, transform) in &q {
+        let current = transform.scale.x;
+        let (target, duration) = match *interaction {
+            Interaction::Hovered => (1.05, 0.15),
+            Interaction::None => (1.0, 0.15),
+            Interaction::Pressed => (0.97, 0.08),
+        };
+        commands.entity(entity).insert(Tween::<f32> {
+            start: current,
+            end: target,
+            elapsed: 0.0,
+            duration,
+            easing: EaseFunction::QuadraticOut,
+        });
     }
 }

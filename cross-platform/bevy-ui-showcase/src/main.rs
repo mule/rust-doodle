@@ -58,6 +58,7 @@ fn main() {
                 widgets_section::toggle_emoji_menu,
                 widgets_section::handle_emoji_clicks,
                 widgets_section::update_emoji_button_visuals,
+                widgets_section::dispatch_button_hover_scale,
             ),
         )
         .add_systems(
