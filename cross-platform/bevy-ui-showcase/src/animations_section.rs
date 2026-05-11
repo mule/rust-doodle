@@ -206,6 +206,111 @@ pub fn spawn(commands: &mut Commands) -> Entity {
                     TextRole::Primary,
                 ));
             });
+
+            // ── Block 3: Easing function gallery ──
+            c.spawn(Node {
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(8.0),
+                ..default()
+            })
+            .with_children(|cell| {
+                cell.spawn((
+                    Text::new("Easing function gallery"),
+                    TextFont { font_size: 18.0, ..default() },
+                    TextColor::default(),
+                    TextRole::Primary,
+                ));
+                cell.spawn((
+                    Text::new(
+                        "Six EaseFunction variants. Click Restart to race \
+                         all six markers in lockstep over 1.5 seconds.",
+                    ),
+                    TextColor::default(),
+                    TextRole::Subtle,
+                ));
+
+                let curves: [(&str, EaseFunction); 6] = [
+                    ("Linear", EaseFunction::Linear),
+                    ("QuadraticIn", EaseFunction::QuadraticIn),
+                    ("QuadraticOut", EaseFunction::QuadraticOut),
+                    ("QuadraticInOut", EaseFunction::QuadraticInOut),
+                    ("ElasticOut", EaseFunction::ElasticOut),
+                    ("BackOut", EaseFunction::BackOut),
+                ];
+
+                for (name, ease) in curves {
+                    cell.spawn(Node {
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        column_gap: Val::Px(12.0),
+                        ..default()
+                    })
+                    .with_children(|row| {
+                        row.spawn((
+                            Text::new(name),
+                            TextFont { font_size: 12.0, ..default() },
+                            TextColor::default(),
+                            TextRole::Subtle,
+                            Node {
+                                width: Val::Px(120.0),
+                                ..default()
+                            },
+                        ));
+                        // Bar with absolutely-positioned marker inside.
+                        row.spawn((
+                            Node {
+                                width: Val::Px(600.0),
+                                height: Val::Px(32.0),
+                                position_type: PositionType::Relative,
+                                border: UiRect::all(Val::Px(1.0)),
+                                border_radius: BorderRadius::all(Val::Px(4.0)),
+                                ..default()
+                            },
+                            BackgroundColor::default(),
+                            BgRole::Surface,
+                            BorderColor::default(),
+                            BorderRole::Subtle,
+                        ))
+                        .with_children(|bar| {
+                            bar.spawn((
+                                Node {
+                                    width: Val::Px(12.0),
+                                    height: Val::Px(12.0),
+                                    position_type: PositionType::Absolute,
+                                    left: Val::Px(0.0),
+                                    top: Val::Px(10.0),
+                                    border_radius: BorderRadius::all(Val::Px(9999.0)),
+                                    ..default()
+                                },
+                                BackgroundColor::default(),
+                                BgRole::BoxFill,
+                                EasingMarker(ease),
+                            ));
+                        });
+                    });
+                }
+
+                // Restart button below the gallery.
+                cell.spawn((
+                    Button,
+                    Node {
+                        padding: UiRect::axes(Val::Px(16.0), Val::Px(8.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        border_radius: BorderRadius::all(Val::Px(4.0)),
+                        margin: UiRect::top(Val::Px(8.0)),
+                        ..default()
+                    },
+                    BackgroundColor::default(),
+                    BgRole::ButtonIdle,
+                    RestartGallery,
+                ))
+                .with_child((
+                    Text::new("Restart"),
+                    TextColor::default(),
+                    TextRole::Primary,
+                ));
+            });
         })
         .id();
 
@@ -259,6 +364,44 @@ pub fn toggle_drawer(
             elapsed: 0.0,
             duration,
             easing,
+        });
+    }
+}
+
+/// Marker on each easing-gallery marker entity, holding the EaseFunction
+/// it should animate with.
+#[derive(Component)]
+pub(crate) struct EasingMarker(pub EaseFunction);
+
+/// Marker on the "Restart" button.
+#[derive(Component)]
+pub(crate) struct RestartGallery;
+
+/// On Pressed of RestartGallery, insert a fresh `Tween<Val>` on every
+/// `EasingMarker` entity. All six animate in lockstep so the curves can
+/// be compared side by side.
+#[allow(clippy::type_complexity)]
+pub fn restart_easing_gallery(
+    mut commands: Commands,
+    buttons: Query<&Interaction, (Changed<Interaction>, With<RestartGallery>)>,
+    markers: Query<(Entity, &EasingMarker)>,
+) {
+    let mut clicked = false;
+    for i in &buttons {
+        if *i == Interaction::Pressed {
+            clicked = true;
+        }
+    }
+    if !clicked {
+        return;
+    }
+    for (entity, marker) in &markers {
+        commands.entity(entity).insert(Tween::<Val> {
+            start: Val::Px(0.0),
+            end: Val::Px(584.0),
+            elapsed: 0.0,
+            duration: 1.5,
+            easing: marker.0,
         });
     }
 }
