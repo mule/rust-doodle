@@ -1,7 +1,9 @@
+use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
 
 use crate::nav::{Section, SectionRoot};
-use crate::theme::{BgRole, TextRole};
+use crate::theme::{BgRole, BorderRole, TextRole};
+use crate::tween::Tween;
 use crate::widgets_section::{ClickCount, ClickCountLabel};
 
 pub fn spawn(commands: &mut Commands) -> Entity {
@@ -106,9 +108,157 @@ pub fn spawn(commands: &mut Commands) -> Entity {
                     ));
                 });
             });
+
+            // ── Block 2: Slide-in panel ──
+            c.spawn(Node {
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(8.0),
+                ..default()
+            })
+            .with_children(|cell| {
+                cell.spawn((
+                    Text::new("Slide-in panel"),
+                    TextFont { font_size: 18.0, ..default() },
+                    TextColor::default(),
+                    TextRole::Primary,
+                ));
+                cell.spawn((
+                    Text::new(
+                        "Click the toggle. A 320px-wide panel slides in from \
+                         the right edge of the demo area; click again to \
+                         slide it out. Uses Tween<Val::Px> on Node.left.",
+                    ),
+                    TextColor::default(),
+                    TextRole::Subtle,
+                ));
+
+                // Demo container — fixed-size with overflow: clip so the
+                // off-screen panel doesn't bleed into surrounding layout.
+                cell.spawn((
+                    Node {
+                        width: Val::Px(600.0),
+                        height: Val::Px(300.0),
+                        position_type: PositionType::Relative,
+                        overflow: Overflow::clip(),
+                        border_radius: BorderRadius::all(Val::Px(4.0)),
+                        ..default()
+                    },
+                    BackgroundColor::default(),
+                    BgRole::Surface,
+                ))
+                .with_children(|container| {
+                    // The panel — absolutely positioned, initially off-screen
+                    // (left: 600 = panel left-edge at container right-edge).
+                    container
+                        .spawn((
+                            Node {
+                                position_type: PositionType::Absolute,
+                                top: Val::Px(0.0),
+                                bottom: Val::Px(0.0),
+                                left: Val::Px(600.0),
+                                width: Val::Px(320.0),
+                                padding: UiRect::all(Val::Px(16.0)),
+                                flex_direction: FlexDirection::Column,
+                                row_gap: Val::Px(8.0),
+                                border: UiRect::left(Val::Px(1.0)),
+                                ..default()
+                            },
+                            BackgroundColor::default(),
+                            BgRole::Input,
+                            BorderColor::default(),
+                            BorderRole::Subtle,
+                            DrawerPanel,
+                            DrawerOpen::default(),
+                        ))
+                        .with_children(|panel| {
+                            panel.spawn((
+                                Text::new("Drawer"),
+                                TextFont { font_size: 20.0, ..default() },
+                                TextColor::default(),
+                                TextRole::Primary,
+                            ));
+                            panel.spawn((
+                                Text::new("Placeholder content for the demo."),
+                                TextColor::default(),
+                                TextRole::Subtle,
+                            ));
+                        });
+                });
+
+                // Toggle button below the container.
+                cell.spawn((
+                    Button,
+                    Node {
+                        padding: UiRect::axes(Val::Px(16.0), Val::Px(8.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        border_radius: BorderRadius::all(Val::Px(4.0)),
+                        margin: UiRect::top(Val::Px(8.0)),
+                        ..default()
+                    },
+                    BackgroundColor::default(),
+                    BgRole::ButtonIdle,
+                    DrawerToggle,
+                ))
+                .with_child((
+                    Text::new("Toggle drawer"),
+                    TextColor::default(),
+                    TextRole::Primary,
+                ));
+            });
         })
         .id();
 
     commands.entity(root).add_children(&[header, content]);
     root
+}
+
+/// Marker on the panel that slides in/out.
+#[derive(Component)]
+pub(crate) struct DrawerPanel;
+
+/// Open-state on the panel (initially false = off-screen).
+#[derive(Component, Default)]
+pub(crate) struct DrawerOpen(pub bool);
+
+/// Marker on the button that toggles the drawer.
+#[derive(Component)]
+pub(crate) struct DrawerToggle;
+
+/// On `Pressed` of a DrawerToggle button, flip every DrawerOpen's bool and
+/// insert a fresh Tween<Val> that animates the panel's `left` property.
+#[allow(clippy::type_complexity)]
+pub fn toggle_drawer(
+    mut commands: Commands,
+    buttons: Query<&Interaction, (Changed<Interaction>, With<DrawerToggle>)>,
+    mut panels: Query<(Entity, &Node, &mut DrawerOpen), With<DrawerPanel>>,
+) {
+    let mut clicked = false;
+    for interaction in &buttons {
+        if *interaction == Interaction::Pressed {
+            clicked = true;
+        }
+    }
+    if !clicked {
+        return;
+    }
+    for (entity, node, mut open) in &mut panels {
+        open.0 = !open.0;
+        let current = match node.left {
+            Val::Px(v) => v,
+            _ => 0.0,
+        };
+        let (target, duration, easing) = if open.0 {
+            (280.0, 0.25, EaseFunction::QuadraticOut)
+        } else {
+            (600.0, 0.20, EaseFunction::QuadraticIn)
+        };
+        commands.entity(entity).insert(Tween::<Val> {
+            start: Val::Px(current),
+            end: Val::Px(target),
+            elapsed: 0.0,
+            duration,
+            easing,
+        });
+    }
 }

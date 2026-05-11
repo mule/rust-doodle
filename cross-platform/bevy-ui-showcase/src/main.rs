@@ -76,6 +76,7 @@ fn main() {
                 tween::advance_f32_tweens,
                 tween::advance_color_tweens,
                 tween::advance_val_tweens,
+                animations_section::toggle_drawer,
             ),
         )
         .run();
