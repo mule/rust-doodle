@@ -371,12 +371,25 @@ pub fn sync_clear_color(
 // ── Toggle handler ──────────────────────────────────────────────────────────
 
 pub fn handle_theme_toggle(
+    mut commands: Commands,
     mut theme: ResMut<Theme>,
+    transition: Option<Res<ThemeTransition>>,
     q: Query<&Interaction, (Changed<Interaction>, With<ThemeToggle>)>,
 ) {
     for interaction in &q {
-        if *interaction == Interaction::Pressed {
+        if *interaction == Interaction::Pressed && transition.is_none() {
+            let from_bg = theme.bg;
+            let from_text = theme.text;
+            let from_border = theme.border;
             theme.toggle();
+            commands.insert_resource(ThemeTransition {
+                from_bg,
+                from_text,
+                from_border,
+                elapsed: 0.0,
+                duration: 0.3,
+                easing: EaseFunction::QuadraticInOut,
+            });
         }
     }
 }
