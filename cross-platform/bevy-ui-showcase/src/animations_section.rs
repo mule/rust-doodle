@@ -3,6 +3,7 @@ use bevy::prelude::*;
 
 use crate::nav::{Section, SectionRoot};
 use crate::theme::{BgRole, BorderRole, TextRole};
+use crate::theme::Theme;
 use crate::tween::Tween;
 use crate::widgets_section::{ClickCount, ClickCountLabel};
 
@@ -311,6 +312,82 @@ pub fn spawn(commands: &mut Commands) -> Entity {
                     TextRole::Primary,
                 ));
             });
+            // ── Block 4: Color crossfade ──
+            let seed = crate::theme::Theme::dark();
+            let seed_left = seed.bg.box_fill;
+            let seed_right = seed.bg.accent;
+            c.spawn(Node {
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(8.0),
+                ..default()
+            })
+            .with_children(|cell| {
+                cell.spawn((
+                    Text::new("Color crossfade"),
+                    TextFont { font_size: 18.0, ..default() },
+                    TextColor::default(),
+                    TextRole::Primary,
+                ));
+                cell.spawn((
+                    Text::new(
+                        "Two swatches crossfade between two theme-derived \
+                         color pairs over 600ms (QuadraticInOut). \
+                         Swatches don't carry BgRole; theme toggle won't \
+                         reskin them until the next Toggle click.",
+                    ),
+                    TextColor::default(),
+                    TextRole::Subtle,
+                ));
+                cell.spawn(Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(16.0),
+                    padding: UiRect::all(Val::Px(8.0)),
+                    ..default()
+                })
+                .with_children(|row| {
+                    row.spawn((
+                        Node {
+                            width: Val::Px(80.0),
+                            height: Val::Px(80.0),
+                            border_radius: BorderRadius::all(Val::Px(4.0)),
+                            ..default()
+                        },
+                        BackgroundColor(seed_left),
+                        CrossfadeSwatch(CrossfadeSide::Left),
+                    ));
+                    row.spawn((
+                        Node {
+                            width: Val::Px(80.0),
+                            height: Val::Px(80.0),
+                            border_radius: BorderRadius::all(Val::Px(4.0)),
+                            ..default()
+                        },
+                        BackgroundColor(seed_right),
+                        CrossfadeSwatch(CrossfadeSide::Right),
+                    ));
+                });
+
+                // Toggle button below the swatches.
+                cell.spawn((
+                    Button,
+                    Node {
+                        padding: UiRect::axes(Val::Px(16.0), Val::Px(8.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        border_radius: BorderRadius::all(Val::Px(4.0)),
+                        margin: UiRect::top(Val::Px(8.0)),
+                        ..default()
+                    },
+                    BackgroundColor::default(),
+                    BgRole::ButtonIdle,
+                    CrossfadeState::default(),
+                ))
+                .with_child((
+                    Text::new("Toggle"),
+                    TextColor::default(),
+                    TextRole::Primary,
+                ));
+            });
         })
         .id();
 
@@ -403,5 +480,57 @@ pub fn restart_easing_gallery(
             duration: 1.5,
             easing: marker.0,
         });
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum CrossfadeSide {
+    Left,
+    Right,
+}
+
+#[derive(Component)]
+pub(crate) struct CrossfadeSwatch(pub CrossfadeSide);
+
+/// Lives on the toggle button. Flipped on each click; chooses which color
+/// pair the swatches are tweened toward.
+#[derive(Component, Default)]
+pub(crate) struct CrossfadeState(pub bool);
+
+/// On Pressed of a CrossfadeState button, flip the state and insert
+/// `Tween<Color>` on each CrossfadeSwatch with the new target color.
+///
+/// Note: the swatches do not carry BgRole — color is owned by the most
+/// recent toggle. A global theme toggle does NOT reskin the swatches;
+/// they stay at whatever the prior click painted them in the prior theme.
+/// The next click re-reads `theme.bg.*` and tweens to current theme's
+/// pair colors.
+#[allow(clippy::type_complexity)]
+pub fn toggle_crossfade(
+    mut commands: Commands,
+    theme: Res<Theme>,
+    mut state_q: Query<(&Interaction, &mut CrossfadeState), Changed<Interaction>>,
+    swatches: Query<(Entity, &CrossfadeSwatch, &BackgroundColor)>,
+) {
+    for (interaction, mut state) in &mut state_q {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        state.0 = !state.0;
+        for (entity, side, current) in &swatches {
+            let target = match (state.0, side.0) {
+                (false, CrossfadeSide::Left) => theme.bg.box_fill,
+                (false, CrossfadeSide::Right) => theme.bg.accent,
+                (true, CrossfadeSide::Left) => theme.bg.slider_thumb,
+                (true, CrossfadeSide::Right) => theme.bg.button_pressed,
+            };
+            commands.entity(entity).insert(Tween::<Color> {
+                start: current.0,
+                end: target,
+                elapsed: 0.0,
+                duration: 0.6,
+                easing: EaseFunction::QuadraticInOut,
+            });
+        }
     }
 }

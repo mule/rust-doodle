@@ -78,6 +78,7 @@ fn main() {
                 tween::advance_val_tweens,
                 animations_section::toggle_drawer,
                 animations_section::restart_easing_gallery,
+                animations_section::toggle_crossfade,
             ),
         )
         .run();
