@@ -70,6 +70,7 @@ fn main() {
                 theme::handle_theme_toggle,
                 nav::update_theme_toggle_label,
                 theming_section::update_swatches,
+                theme::advance_theme_transition,
                 tween::advance_f32_tweens,
                 tween::advance_color_tweens,
                 tween::advance_val_tweens,

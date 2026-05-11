@@ -1,3 +1,4 @@
+use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
 
 // ── Theme mode ──────────────────────────────────────────────────────────────
@@ -145,6 +146,27 @@ impl Default for Theme {
     }
 }
 
+/// Active while the app is mid-crossfade between dark and light. Snapshotted
+/// by `handle_theme_toggle` at the moment of the click; advanced by
+/// `advance_theme_transition`; consumed by the three role resolvers and
+/// `sync_clear_color` as a per-frame blend source.
+#[derive(Resource)]
+pub struct ThemeTransition {
+    pub from_bg: BgTokens,
+    pub from_text: TextTokens,
+    pub from_border: BorderTokens,
+    pub elapsed: f32,
+    pub duration: f32,
+    pub easing: EaseFunction,
+}
+
+impl ThemeTransition {
+    pub fn eased_progress(&self) -> f32 {
+        let raw = (self.elapsed / self.duration).clamp(0.0, 1.0);
+        self.easing.sample(raw).unwrap_or(raw)
+    }
+}
+
 // ── Role enum components ────────────────────────────────────────────────────
 
 #[derive(Component, Clone, Copy, Debug)]
@@ -210,6 +232,51 @@ impl BorderTokens {
     }
 }
 
+impl BgTokens {
+    pub fn mix(a: &BgTokens, b: &BgTokens, t: f32) -> BgTokens {
+        use bevy::color::Mix;
+        BgTokens {
+            background: a.background.mix(&b.background, t),
+            surface: a.surface.mix(&b.surface, t),
+            box_fill: a.box_fill.mix(&b.box_fill, t),
+            accent: a.accent.mix(&b.accent, t),
+            button_idle: a.button_idle.mix(&b.button_idle, t),
+            button_hover: a.button_hover.mix(&b.button_hover, t),
+            button_pressed: a.button_pressed.mix(&b.button_pressed, t),
+            tab_bar: a.tab_bar.mix(&b.tab_bar, t),
+            tab_inactive: a.tab_inactive.mix(&b.tab_inactive, t),
+            tab_hovered: a.tab_hovered.mix(&b.tab_hovered, t),
+            tab_active: a.tab_active.mix(&b.tab_active, t),
+            input: a.input.mix(&b.input, t),
+            emoji_btn_idle: a.emoji_btn_idle.mix(&b.emoji_btn_idle, t),
+            emoji_btn_hover: a.emoji_btn_hover.mix(&b.emoji_btn_hover, t),
+            slider_track: a.slider_track.mix(&b.slider_track, t),
+            slider_thumb: a.slider_thumb.mix(&b.slider_thumb, t),
+        }
+    }
+}
+
+impl TextTokens {
+    pub fn mix(a: &TextTokens, b: &TextTokens, t: f32) -> TextTokens {
+        use bevy::color::Mix;
+        TextTokens {
+            primary: a.primary.mix(&b.primary, t),
+            subtle: a.subtle.mix(&b.subtle, t),
+            on_accent: a.on_accent.mix(&b.on_accent, t),
+        }
+    }
+}
+
+impl BorderTokens {
+    pub fn mix(a: &BorderTokens, b: &BorderTokens, t: f32) -> BorderTokens {
+        use bevy::color::Mix;
+        BorderTokens {
+            subtle: a.subtle.mix(&b.subtle, t),
+            focus: a.focus.mix(&b.focus, t),
+        }
+    }
+}
+
 // ── Marker for the toggle button ────────────────────────────────────────────
 
 #[derive(Component)]
@@ -224,50 +291,81 @@ pub struct ThemeToggle;
 
 pub fn resolve_bg_role(
     theme: Res<Theme>,
+    transition: Option<Res<ThemeTransition>>,
     mut q: Query<(&BgRole, &mut BackgroundColor)>,
     added: Query<(), Added<BgRole>>,
 ) {
-    if !theme.is_changed() && added.is_empty() {
+    let mid_transition = transition.is_some();
+    if !theme.is_changed() && added.is_empty() && !mid_transition {
         return;
     }
+    let blended_bg = if let Some(t) = transition.as_ref() {
+        BgTokens::mix(&t.from_bg, &theme.bg, t.eased_progress())
+    } else {
+        theme.bg
+    };
     for (role, mut bg) in &mut q {
-        bg.0 = theme.bg.resolve(*role);
+        bg.0 = blended_bg.resolve(*role);
     }
 }
 
 pub fn resolve_text_role(
     theme: Res<Theme>,
+    transition: Option<Res<ThemeTransition>>,
     mut q: Query<(&TextRole, &mut TextColor)>,
     added: Query<(), Added<TextRole>>,
 ) {
-    if !theme.is_changed() && added.is_empty() {
+    let mid_transition = transition.is_some();
+    if !theme.is_changed() && added.is_empty() && !mid_transition {
         return;
     }
+    let blended_text = if let Some(t) = transition.as_ref() {
+        TextTokens::mix(&t.from_text, &theme.text, t.eased_progress())
+    } else {
+        theme.text
+    };
     for (role, mut color) in &mut q {
-        color.0 = theme.text.resolve(*role);
+        color.0 = blended_text.resolve(*role);
     }
 }
 
 pub fn resolve_border_role(
     theme: Res<Theme>,
+    transition: Option<Res<ThemeTransition>>,
     mut q: Query<(&BorderRole, &mut BorderColor)>,
     added: Query<(), Added<BorderRole>>,
 ) {
-    if !theme.is_changed() && added.is_empty() {
+    let mid_transition = transition.is_some();
+    if !theme.is_changed() && added.is_empty() && !mid_transition {
         return;
     }
+    let blended_border = if let Some(t) = transition.as_ref() {
+        BorderTokens::mix(&t.from_border, &theme.border, t.eased_progress())
+    } else {
+        theme.border
+    };
     for (role, mut color) in &mut q {
-        *color = BorderColor::all(theme.border.resolve(*role));
+        *color = BorderColor::all(blended_border.resolve(*role));
     }
 }
 
 // ── Clear-color sync ────────────────────────────────────────────────────────
 
-pub fn sync_clear_color(theme: Res<Theme>, mut clear: ResMut<ClearColor>) {
-    if !theme.is_changed() {
+pub fn sync_clear_color(
+    theme: Res<Theme>,
+    transition: Option<Res<ThemeTransition>>,
+    mut clear: ResMut<ClearColor>,
+) {
+    let mid_transition = transition.is_some();
+    if !theme.is_changed() && !mid_transition {
         return;
     }
-    clear.0 = theme.bg.background;
+    clear.0 = if let Some(t) = transition.as_ref() {
+        use bevy::color::Mix;
+        t.from_bg.background.mix(&theme.bg.background, t.eased_progress())
+    } else {
+        theme.bg.background
+    };
 }
 
 // ── Toggle handler ──────────────────────────────────────────────────────────
@@ -280,5 +378,19 @@ pub fn handle_theme_toggle(
         if *interaction == Interaction::Pressed {
             theme.toggle();
         }
+    }
+}
+
+// ── Transition advance system ────────────────────────────────────────────────
+
+pub fn advance_theme_transition(
+    time: Res<Time>,
+    mut commands: Commands,
+    transition: Option<ResMut<ThemeTransition>>,
+) {
+    let Some(mut t) = transition else { return; };
+    t.elapsed += time.delta_secs();
+    if t.elapsed >= t.duration {
+        commands.remove_resource::<ThemeTransition>();
     }
 }
