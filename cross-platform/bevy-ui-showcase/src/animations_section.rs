@@ -457,7 +457,6 @@ pub(crate) struct RestartGallery;
 /// On Pressed of RestartGallery, insert a fresh `Tween<Val>` on every
 /// `EasingMarker` entity. All six animate in lockstep so the curves can
 /// be compared side by side.
-#[allow(clippy::type_complexity)]
 pub fn restart_easing_gallery(
     mut commands: Commands,
     buttons: Query<&Interaction, (Changed<Interaction>, With<RestartGallery>)>,
