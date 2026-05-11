@@ -5,6 +5,7 @@ mod layout_section;
 mod nav;
 mod theme;
 mod theming_section;
+mod tween;
 mod widgets_section;
 
 use nav::{Section, SectionRoot};
@@ -69,6 +70,9 @@ fn main() {
                 theme::handle_theme_toggle,
                 nav::update_theme_toggle_label,
                 theming_section::update_swatches,
+                tween::advance_f32_tweens,
+                tween::advance_color_tweens,
+                tween::advance_val_tweens,
             ),
         )
         .run();
