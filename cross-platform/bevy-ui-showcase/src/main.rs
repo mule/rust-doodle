@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::text::Font;
 
+mod animations_section;
 mod layout_section;
 mod nav;
 mod theme;
@@ -8,7 +9,7 @@ mod theming_section;
 mod tween;
 mod widgets_section;
 
-use nav::{Section, SectionRoot};
+use nav::Section;
 
 fn main() {
     App::new()
@@ -136,27 +137,6 @@ fn setup_root(mut commands: Commands, asset_server: Res<AssetServer>) {
     sections.push(layout_section::spawn(&mut commands));
     sections.push(widgets_section::spawn(&mut commands));
     sections.push(theming_section::spawn(&mut commands, inter_bold));
-    sections.push(spawn_placeholder(&mut commands, Section::Animations));
+    sections.push(animations_section::spawn(&mut commands));
     commands.entity(content).add_children(&sections);
-}
-
-fn spawn_placeholder(commands: &mut Commands, section: Section) -> Entity {
-    commands
-        .spawn((
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                display: Display::None,
-                ..default()
-            },
-            SectionRoot(section),
-        ))
-        .with_child((
-            Text::new(format!("{} — coming in a later phase", section.label())),
-            TextColor::default(),
-            theme::TextRole::Subtle,
-        ))
-        .id()
 }
