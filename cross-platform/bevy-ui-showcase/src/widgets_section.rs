@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::window::{CursorIcon, SystemCursorIcon};
 
 use crate::nav::{Section, SectionRoot};
-use crate::theme::{BgRole, BorderRole, TextRole, Theme};
+use crate::theme::{BgRole, BorderRole, TextRole, Theme, ThemeTransition};
 use crate::tween::Tween;
 
 /// Per-button click state. Lives on the Button entity itself.
@@ -502,7 +502,6 @@ pub fn spawn(commands: &mut Commands) -> Entity {
                                 BackgroundColor::default(),
                                 BgRole::Input,
                                 BorderColor::default(),
-                                BorderRole::Subtle,
                                 TextInput,
                                 TextInputBuffer::default(),
                             ))
@@ -854,19 +853,34 @@ pub fn update_text_input_display(
 
 /// Color the field's border based on focus state — visible feedback that
 /// keystrokes will land here.
+///
+/// Owns the input border end-to-end: no `BorderRole` on the entity. Runs
+/// unconditionally so the focus/subtle color stays correct through theme
+/// transitions (blends both sides), focus changes, and the trailing edge of
+/// a transition (where neither focus nor the Theme resource fires `Changed`,
+/// but the previous frame painted a mid-blend value). Cost: one BorderColor
+/// write per input per frame — trivial at this entity count.
 pub fn update_text_input_border(
     theme: Res<Theme>,
+    transition: Option<Res<ThemeTransition>>,
     focused: Res<FocusedTextInput>,
     mut inputs: Query<(Entity, &mut BorderColor), With<TextInput>>,
 ) {
-    if !focused.is_changed() {
-        return;
-    }
+    use bevy::color::Mix;
+    let (focus_color, subtle_color) = if let Some(t) = transition.as_ref() {
+        let p = t.eased_progress();
+        (
+            t.from_border.focus.mix(&theme.border.focus, p),
+            t.from_border.subtle.mix(&theme.border.subtle, p),
+        )
+    } else {
+        (theme.border.focus, theme.border.subtle)
+    };
     for (entity, mut border) in &mut inputs {
         let color = if focused.0 == Some(entity) {
-            theme.border.focus
+            focus_color
         } else {
-            theme.border.subtle
+            subtle_color
         };
         *border = BorderColor::all(color);
     }
