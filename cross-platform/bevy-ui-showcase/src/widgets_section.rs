@@ -212,22 +212,12 @@ pub fn spawn(commands: &mut Commands) -> Entity {
                     });
 
                 //
-                // ── Demo 2 (your turn): checkbox ──
+                // ── Demo 2: checkbox ──
                 //
-                // The widget shape:
-                //   • A small square (~20px) — the visual "box".
-                //   • A child Text inside it that's "✓" when checked, "" when not.
-                //   • A `Checked(bool)` state component on the box entity.
-                //   • A click system that flips the bool on `Interaction::Pressed`.
-                //   • A render system that updates the child Text + maybe the box color.
-                //
-                // Decisions you'll make:
-                //   • Click target — Button on the square itself, or a wrapping label?
-                //   • Visual — checkmark glyph vs. fill-when-checked vs. both?
-                //   • Default state — checked or unchecked?
-                //
-                // Add the Checked component, the spawn calls, and (in main.rs) wire up
-                // the click-handler system you'll write below.
+                // 20px square Button + CheckboxGlyph child Text. `update_checkboxes`
+                // flips the `Checked(bool)` on Pressed and rewrites the glyph to
+                // "\u{f00c}" (Nerd Font fa-check) or "". Click target is the square
+                // itself; default state is unchecked.
                 //
                 demos
                     .spawn(Node {
@@ -310,20 +300,13 @@ pub fn spawn(commands: &mut Commands) -> Entity {
                     });
 
                 //
-                // ── Demo 3 (your turn): slider ──
+                // ── Demo 3: slider ──
                 //
-                // Hardest of the four. The shape:
-                //   • A "track" Node (e.g. 200×8px, rounded).
-                //   • A "thumb" Node child positioned absolutely along the track.
-                //   • A `SliderValue(f32)` (0.0..=1.0) on the track entity.
-                //   • A `Slider` tag so a system can find them all.
-                //   • A drag system: on `Interaction::Pressed`, read the cursor's x
-                //     relative to the track's ComputedNode rect and write to value.
-                //
-                // Decisions you'll make:
-                //   • Range (0..1, or labelled units like 0..100)?
-                //   • Click-to-set or only drag, or both?
-                //   • Show numeric value next to the slider?
+                // Track (Button, 200×8px) + Thumb child positioned absolutely along
+                // it. `SliderValue(f32)` in 0.0..=1.0 lives on the track entity;
+                // `update_slider_drag` reads `physical_cursor_position()` while
+                // Interaction::Pressed and writes the normalised x. Drag-only (no
+                // click-to-set); a live "value: 0.42"-style label sits beside it.
                 //
                 demos
                     .spawn(Node {
@@ -374,8 +357,8 @@ pub fn spawn(commands: &mut Commands) -> Entity {
                             // value-display label below can point at it.
                             let track_id = row
                                 .spawn((
-                                    // Button triggers required-component injection of
-                                    // Interaction + FocusPolicy so the track is pickable.
+                                    // Button gets `Interaction` auto-inserted so the
+                                    // track is pickable.
                                     Button,
                                     Node {
                                         width: Val::Px(200.0),
@@ -432,22 +415,17 @@ pub fn spawn(commands: &mut Commands) -> Entity {
                     });
 
                 //
-                // ── Demo 4 (your turn): text input ──
+                // ── Demo 4: text input ──
                 //
-                // Bevy has no built-in text editor, so this is the most "from scratch"
-                // widget. The shape:
-                //   • A bordered Node sized like an input field.
-                //   • A child Text that holds the current buffer.
-                //   • A `TextInputBuffer(String)` + `TextInputFocused(bool)` on the field.
-                //   • A click system that toggles focus on Pressed.
-                //   • A keyboard system that reads `Res<ButtonInput<KeyCode>>` (for
-                //     things like Backspace) and `EventReader<KeyboardInput>` (for the
-                //     printable characters via `KeyboardInput::logical_key`).
-                //
-                // Decisions you'll make:
-                //   • Single-line only? Allow newlines?
-                //   • Caret rendering — blinking |, color-flash on the buffer, or none?
-                //   • Modifier handling (shift/ctrl) — ignore or honor?
+                // Bevy ships no text-editing primitives, so this is the most
+                // hand-rolled widget. A bordered field carries `TextInput` +
+                // `TextInputBuffer(String)`; focus is global state in the
+                // `FocusedTextInput(Option<Entity>)` Resource. Click to focus;
+                // `update_text_input_keyboard` reads `MessageReader<KeyboardInput>`
+                // and uses `event.text` (a layout-aware `Option<SmolStr>` that
+                // already accounts for shift/dead keys) for printable chars and
+                // `event.key_code` for Backspace + Escape. Single-line; caret is
+                // a "|" appended to the display when focused.
                 //
                 demos
                     .spawn(Node {
@@ -685,7 +663,7 @@ pub fn update_slider_drag(
             continue;
         }
         // `UiGlobalTransform` derefs to `Affine2`, whose `translation: Vec2`
-        // is the screen-pixel position of the node's center.
+        // is the physical-pixel position of the node's center.
         let track_left = transform.translation.x - track_width / 2.0;
         let local_x = cursor.x - track_left;
         value.0 = (local_x / track_width).clamp(0.0, 1.0);
@@ -778,7 +756,8 @@ pub fn update_text_input_focus(
 ///   • For Backspace and Escape, match on `event.key_code` regardless of layout.
 ///
 /// We listen only to `state == Pressed` events to avoid double-applying on
-/// release. `repeat: true` events are kept so holding a key works.
+/// release. We don't filter `event.repeat`, so platform key-repeat naturally
+/// drives the buffer while a key is held.
 pub fn update_text_input_keyboard(
     mut events: MessageReader<KeyboardInput>,
     mut focused: ResMut<FocusedTextInput>,

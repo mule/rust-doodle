@@ -57,7 +57,7 @@ pub fn spawn(commands: &mut Commands) -> Entity {
             })
             .with_children(|demos| {
                 //
-                // ── Demo 1 (provided): FlexDirection::Row + FlexGrow ──
+                // ── Demo 1: FlexDirection::Row + FlexGrow ──
                 //
                 demos
                     .spawn(Node {
@@ -127,19 +127,12 @@ pub fn spawn(commands: &mut Commands) -> Entity {
                     });
 
                 //
-                // ── Demo 2 (your turn) ──
+                // ── Demo 2: nested column inside a row ──
                 //
-                // Pick one of:
-                //   • JustifyContent — fixed-size boxes spaced via SpaceBetween / Center /
-                //     SpaceAround on the parent's justify_content.
-                //   • AlignItems on the cross axis — boxes of different heights aligned
-                //     Start / Center / End via the parent's align_items.
-                //   • Percentage vs pixel sizing — two children, one Val::Percent(50.0),
-                //     one Val::Px(200.0). Resize: only the percent box reflows.
-                //   • Nested column inside a row — main axis switches mid-tree.
-                //
-                // Edit the title / description below and add `row.spawn(...)` calls in the
-                // marked closure.
+                // Three "card" columns laid out in a row. Outer flow is horizontal;
+                // inside each card the flow flips to vertical (accent strip on top,
+                // body block below). Demonstrates main-axis switching across nesting
+                // boundaries.
                 //
                 demos
                     .spawn(Node {
@@ -169,8 +162,6 @@ pub fn spawn(commands: &mut Commands) -> Entity {
                                 column_gap: Val::Px(8.0),
                                 padding: UiRect::all(Val::Px(8.0)),
                                 border_radius: BorderRadius::all(Val::Px(4.0)),
-                                // TODO: tweak this Node's flexbox properties for your demo.
-                                // e.g. `justify_content: JustifyContent::SpaceBetween,`
                                 ..default()
                             },
                             BackgroundColor::default(),
