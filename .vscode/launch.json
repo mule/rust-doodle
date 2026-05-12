@@ -42,6 +42,20 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}/cross-platform/hello-rust"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug bevy-ui-showcase",
+            "cargo": {
+                "args": ["build", "--manifest-path", "cross-platform/bevy-ui-showcase/Cargo.toml"],
+                "filter": {
+                    "name": "bevy-ui-showcase",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}/cross-platform/bevy-ui-showcase"
         }
     ]
 }
