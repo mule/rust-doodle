@@ -161,6 +161,27 @@ pub struct ThemeTransition {
 }
 
 impl ThemeTransition {
+    /// Capture the current theme's tokens as the "from" side of a transition,
+    /// using `duration` (must be `> 0.0`) and `easing` for the blend curve.
+    ///
+    /// Caller order: build with `starting(&theme, ...)`, then `theme.toggle()`,
+    /// then insert the resulting transition as a Resource. The live `Theme`
+    /// becomes the "to" side that the resolvers blend toward.
+    pub fn starting(theme: &Theme, duration: f32, easing: EaseFunction) -> Self {
+        assert!(
+            duration > 0.0,
+            "ThemeTransition::starting requires duration > 0.0, got {duration}"
+        );
+        Self {
+            from_bg: theme.bg,
+            from_text: theme.text,
+            from_border: theme.border,
+            elapsed: 0.0,
+            duration,
+            easing,
+        }
+    }
+
     pub fn eased_progress(&self) -> f32 {
         let raw = (self.elapsed / self.duration).clamp(0.0, 1.0);
         self.easing.sample(raw).unwrap_or(raw)
@@ -169,6 +190,17 @@ impl ThemeTransition {
 
 // ── Role enum components ────────────────────────────────────────────────────
 
+/// Static-skin role for an entity's `BackgroundColor`. Resolved against
+/// `theme.bg` by `resolve_bg_role` whenever the theme changes, a
+/// `ThemeTransition` is active, or the role component is newly added.
+///
+/// Interaction-state colors (hover, pressed, active) are intentionally NOT
+/// represented as variants — they're read directly from `theme.bg.*` by
+/// widget interaction systems (`update_button_visuals`, `update_tab_visuals`,
+/// `update_emoji_button_visuals`, etc.) and written imperatively. Roles
+/// describe what a thing *is*; widget systems handle what state it's *in*.
+/// That's why `BgRole` has 10 variants but `BgTokens` has 16 fields — the
+/// missing 6 are transient interaction states owned by widget systems.
 #[derive(Component, Clone, Copy, Debug)]
 pub enum BgRole {
     Surface,
@@ -378,18 +410,9 @@ pub fn handle_theme_toggle(
 ) {
     for interaction in &q {
         if *interaction == Interaction::Pressed && transition.is_none() {
-            let from_bg = theme.bg;
-            let from_text = theme.text;
-            let from_border = theme.border;
+            let pending = ThemeTransition::starting(&theme, 0.3, EaseFunction::QuadraticInOut);
             theme.toggle();
-            commands.insert_resource(ThemeTransition {
-                from_bg,
-                from_text,
-                from_border,
-                elapsed: 0.0,
-                duration: 0.3,
-                easing: EaseFunction::QuadraticInOut,
-            });
+            commands.insert_resource(pending);
         }
     }
 }

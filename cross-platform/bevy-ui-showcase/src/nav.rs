@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::theme::{BgRole, TextRole, Theme};
+use crate::theme::{BgRole, TextRole, Theme, ThemeTransition};
 
 #[derive(Component)]
 pub struct ThemeToggleLabel;
@@ -74,8 +74,11 @@ pub fn spawn_tab_bar(commands: &mut Commands) -> Entity {
                     border_radius: BorderRadius::all(Val::Px(4.0)),
                     ..default()
                 },
+                // No BgRole: update_tab_visuals owns the BackgroundColor end-to-end
+                // (it needs to drive (inactive, hovered, active) from the same source
+                // of truth, and runs every frame). Carrying BgRole::TabInactive here
+                // would race with the resolver and effectively be dead.
                 BackgroundColor::default(),
-                BgRole::TabInactive,
                 TabButton(section),
             ))
             .with_child((
@@ -152,17 +155,34 @@ pub fn update_section_visibility(
     }
 }
 
+/// Paint every tab button's background based on (active, interaction) state.
+/// Owns the tab BackgroundColor end-to-end — tabs carry no BgRole, so this
+/// is the sole writer. Runs every frame (cheap at ~4 entities); blends the
+/// three tab colors through `ThemeTransition` so toggling theme crossfades
+/// the tabs alongside the rest of the app.
 pub fn update_tab_visuals(
     theme: Res<Theme>,
+    transition: Option<Res<ThemeTransition>>,
     current: Res<CurrentSection>,
     mut query: Query<(&Interaction, &TabButton, &mut BackgroundColor)>,
 ) {
+    use bevy::color::Mix;
+    let (inactive, hovered, active) = if let Some(t) = transition.as_ref() {
+        let p = t.eased_progress();
+        (
+            t.from_bg.tab_inactive.mix(&theme.bg.tab_inactive, p),
+            t.from_bg.tab_hovered.mix(&theme.bg.tab_hovered, p),
+            t.from_bg.tab_active.mix(&theme.bg.tab_active, p),
+        )
+    } else {
+        (theme.bg.tab_inactive, theme.bg.tab_hovered, theme.bg.tab_active)
+    };
     for (interaction, tab, mut bg) in &mut query {
         let is_active = tab.0 == current.0;
         bg.0 = match (is_active, *interaction) {
-            (true, _) => theme.bg.tab_active,
-            (false, Interaction::Hovered | Interaction::Pressed) => theme.bg.tab_hovered,
-            (false, Interaction::None) => theme.bg.tab_inactive,
+            (true, _) => active,
+            (false, Interaction::Hovered | Interaction::Pressed) => hovered,
+            (false, Interaction::None) => inactive,
         };
     }
 }

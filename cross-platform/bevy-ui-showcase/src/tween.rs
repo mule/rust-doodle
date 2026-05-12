@@ -1,13 +1,33 @@
 use bevy::math::curve::EaseFunction;
 use bevy::prelude::*;
 
+mod sealed {
+    use bevy::prelude::*;
+
+    pub trait Sealed {}
+    impl Sealed for f32 {}
+    impl Sealed for Color {}
+    impl Sealed for Val {}
+}
+
+/// Marker for the property types this crate knows how to tween. Sealed so
+/// downstream code can't spawn a `Tween<i32>` (or any other `T`) that has
+/// no matching advance system and would silently sit on its entity forever.
+///
+/// Adding a new tween target = add a `Sealed` impl above, an `impl
+/// TweenTarget` line below, and a new advance system.
+pub trait TweenTarget: sealed::Sealed + Clone + Send + Sync + 'static {}
+impl TweenTarget for f32 {}
+impl TweenTarget for Color {}
+impl TweenTarget for Val {}
+
 /// Generic tween component. Each concrete `T` is its own ECS-distinct
 /// component type — `Tween<f32>` and `Tween<Color>` are unrelated.
 /// Three concrete advance systems below cover the property types this
 /// crate animates: `f32` for scale, `Color` for crossfades, `Val` for
 /// slide positions.
 #[derive(Component)]
-pub struct Tween<T: Clone + Send + Sync + 'static> {
+pub struct Tween<T: TweenTarget> {
     pub start: T,
     pub end: T,
     pub elapsed: f32,
@@ -77,7 +97,10 @@ pub fn advance_val_tweens(
     }
 }
 
-fn px_of(v: Val) -> f32 {
+/// Extract the inner `f32` from `Val::Px(_)`. Non-`Px` variants
+/// `debug_assert!` in dev and fall back to `0.0` in release — anywhere this
+/// is called assumes `Val::Px` per the surrounding contract.
+pub(crate) fn px_of(v: Val) -> f32 {
     match v {
         Val::Px(x) => x,
         other => {

@@ -426,10 +426,7 @@ pub fn toggle_drawer(
     }
     for (entity, node, mut open) in &mut panels {
         open.0 = !open.0;
-        let current = match node.left {
-            Val::Px(v) => v,
-            _ => 0.0,
-        };
+        let current = crate::tween::px_of(node.left);
         let (target, duration, easing) = if open.0 {
             (280.0, 0.25, EaseFunction::QuadraticOut)
         } else {
